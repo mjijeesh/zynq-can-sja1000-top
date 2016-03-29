@@ -1,0 +1,17 @@
+setenv tftp_dir ''
+
+setenv bitstream_image top_wrapper.bit
+setenv dtb_img system.dtb
+setenv kernel_img image.ub
+
+setenv bitstream_load_address 0x04000000
+
+setenv bitstream_tftp 'tftpboot ${bitstream_load_address} ${tftp_dir}${bitstream_image}'
+setenv dtb_tftp 'tftpboot ${dtbnetstart} ${tftp_dir}${dtb_img}'
+setenv kernel_tftp 'tftpboot ${netstart} ${tftp_dir}${kernel_img}'
+
+setenv bitstream_load 'fpga loadb 0 ${bitstream_load_address} ${filesize}'
+
+setenv boot_now 'bootm ${netstart} - ${dtbnetstart}'
+
+run bitstream_tftp bitstream_load kernel_tftp dtb_tftp boot_now
