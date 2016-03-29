@@ -7,7 +7,6 @@ include libs.common.mk
 .PHONY: all build install clean help
 all: build install
 build: .installed
-install: .merged
 
 VER := 2.1.6
 DIR := talloc-$(VER)
@@ -17,7 +16,7 @@ L := libtalloc.so
 
 $(ARCHIVE):
 	wget -c $(URL)
-.unpacked: | $(ARCHIVE)
+.unpacked: $(ARCHIVE)
 	tar xzf $(ARCHIVE)
 	touch .unpacked
 
@@ -31,12 +30,12 @@ $(ARCHIVE):
 	cd $(DIR) && python2 ./buildtools/bin/waf install
 	touch .installed
 
-.merged: .installed
+install: .installed
 	for f in $(L).$(VER); do $(TARGETINST) -d $(STAGEDIR)/usr/lib/$$f /usr/lib/$$f; done
 	for f in $(L) $(L).2; do $(TARGETINST) -s $(L).$(VER) /usr/lib/$$f; done
 
 clean:
-	rm -rf $(DIR)
+	rm -rf $(DIR) .unpacked .configured .built .installed
 
 help:
 	@echo ""
