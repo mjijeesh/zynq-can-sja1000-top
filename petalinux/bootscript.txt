@@ -4,6 +4,13 @@ setenv bitstream_image top_wrapper.bit
 setenv dtb_img system.dtb
 setenv kernel_img image.ub
 
+setenv nfsserverip 192.168.1.75
+setenv nfspath /export/canbench
+
+# Comment out if out want to use compiled-in values.
+# If duplicate parameters are present, the later will take effect.
+setenv bootargs ${bootargs} ip=${ipaddr} nfsroot=${nfsserverip}:${nfspath}
+
 setenv bitstream_load_address 0x04000000
 
 setenv bitstream_tftp 'tftpboot ${bitstream_load_address} ${tftp_dir}${bitstream_image}'
