@@ -10,4 +10,4 @@ system/system.hdf:
 petalinux_config: system/system.hdf
 	$(MAKE) -C petalinux config
 petalinux_build:
-	$(MAKE) -C petalinux build
+	$(MAKE) -C petalinux build bootscript
