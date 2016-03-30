@@ -13,11 +13,13 @@ bindir := $(d)/_compiled
 all: install
 
 build:
+	touch config.omk-default
 	$(MAKE) -C $(srcdir) MAKERULES_DIR=$(d)
 #	$(CC) $(LDFLAGS) -o $@ $(APP_OBJS) $(LDLIBS)
 
 clean:
 	$(MAKE) -C $(srcdir) MAKERULES_DIR=$(d) clean
+	-rm -Rf _compiled _build
 
 .PHONY: all build install
 
