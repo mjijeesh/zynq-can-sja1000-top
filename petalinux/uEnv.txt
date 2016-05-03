@@ -1,6 +1,6 @@
 ipaddr=192.168.1.16
 serverip=192.168.1.75
-bootscript_addr=${clobstart}
+bootscript_addr=0x01000000
 bootscript_path=bootscript
-tboot=tftpboot ${bootscript_addr} ${serverip}:${bootscript_path} ; source ${bootscript_addr}
+tboot=tftpboot ${bootscript_addr} ${serverip}:${bootscript_path} && source ${bootscript_addr}
 default_bootcmd=run tboot

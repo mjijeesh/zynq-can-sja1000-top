@@ -1,3 +1,5 @@
+echo "Running bootscript ..."
+
 setenv tftp_dir ''
 
 setenv bitstream_image top_wrapper.bit
@@ -7,15 +9,16 @@ setenv kernel_img image.ub
 setenv nfsserverip 192.168.1.75
 setenv nfspath /export/canbench
 
+setenv bootargs ${bootargs} console=ttyPS0,115200
 # Comment out if out want to use compiled-in values.
 # If duplicate parameters are present, the later will take effect.
-setenv bootargs ${bootargs} ip=${ipaddr} nfsroot=${nfsserverip}:${nfspath}
+setenv bootargs ${bootargs} ip=${ipaddr} root=/dev/nfs rw nfsroot=${nfsserverip}:${nfspath}
 
 setenv bitstream_load_address 0x04000000
 
-setenv bitstream_tftp 'tftpboot ${bitstream_load_address} ${tftp_dir}${bitstream_image}'
-setenv dtb_tftp 'tftpboot ${dtbnetstart} ${tftp_dir}${dtb_img}'
-setenv kernel_tftp 'tftpboot ${netstart} ${tftp_dir}${kernel_img}'
+setenv bitstream_tftp 'echo === Loading FPGA bitstream; tftpboot ${bitstream_load_address} ${tftp_dir}${bitstream_image}'
+setenv dtb_tftp 'echo === Loading Device Tree; tftpboot ${dtbnetstart} ${tftp_dir}${dtb_img}'
+setenv kernel_tftp 'echo === Loading Linux kernel; tftpboot ${netstart} ${tftp_dir}${kernel_img}'
 
 setenv bitstream_load 'fpga loadb 0 ${bitstream_load_address} ${filesize}'
 

@@ -9,7 +9,7 @@ config: .configured
 	$(MAKE) subsystems/linux/configs/u-boot/platform-auto.h
 	touch .configured
 
-build: .configured
+build: .configured subsystems/linux/configs/u-boot/platform-auto.h
 	petalinux-build
 	$(MAKE) bootscript images/linux/BOOT.BIN
 
