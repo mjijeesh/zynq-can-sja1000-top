@@ -28,7 +28,7 @@ $(ARCHIVE):
 	touch .built
 .installed: .built
 	cd $(DIR) && python2 ./buildtools/bin/waf install
-	touch .installed
+	#touch .installed
 
 install: .installed
 	for f in $(L).$(VER); do $(TARGETINST) -d $(STAGEDIR)/usr/lib/$$f /usr/lib/$$f; done

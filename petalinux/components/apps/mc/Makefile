@@ -22,28 +22,26 @@ $(ARCHIVE):
 	tar xf $(ARCHIVE)
 	touch .unpacked
 
-PREFIX := $(shell pwd)/usr
+PREFIX := $(shell pwd)/image
 
 .configured: .unpacked
 	cd $(DIR) && ./configure --host=arm-xilinx-linux-gnueabi \
 		--with-screen=ncurses --disable-vfs-sfs --disable-vfs-sftp \
-		--with-sysroot=$(STAGEDIR) --without-x --without-gpm-mouse
+		--with-sysroot=$(STAGEDIR) --without-x --without-gpm-mouse \
+		--prefix=/ --exec-prefix=/usr --includedir=/usr/include --datarootdir=/usr/share
 	touch .configured
-.built .files: .configured
-	cd $(DIR) && $(MAKE) && $(MAKE) install DESTDIR=$(PREFIX)
-	find usr -not -type d >.files
-	cp -R -t $(STAGEDIR)/usr $(PREFIX)/*
-	rm -R $(PREFIX)
+.built: .configured
+	cd $(DIR) && $(MAKE)
 	touch .built
-.installed: .built .files
+.installed: .built
+	cd $(DIR) && $(MAKE) install DESTDIR=$(PREFIX)
+	(cd $(PREFIX) && find . -not -type d) >.files
+	cp -R -t $(STAGEDIR) $(PREFIX)/*
+	rm -R $(PREFIX)
 	while read f; do \
-		#  if [ -L $$f ]; then TYPE=-s; \
-		#elif [ -d $$f ]; then continue; \
-		#elif [ -f $$f ]; then TYPE=-f; \
-		#fi; \
 		$(TARGETINST) -d $(STAGEDIR)/$$f /$$f; \
 	done <.files
-	touch .installed
+	#touch .installed
 
 install: .installed
 
