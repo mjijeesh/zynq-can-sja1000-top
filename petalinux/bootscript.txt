@@ -2,7 +2,7 @@ echo "Running bootscript ..."
 
 setenv tftp_dir ''
 
-setenv bitstream_image top_wrapper.bit
+setenv bitstream_image system.bit
 setenv dtb_img system.dtb
 setenv kernel_img image.ub
 
