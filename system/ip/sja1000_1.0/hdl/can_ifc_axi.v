@@ -86,90 +86,36 @@ module can_ifc_async
   end
 endmodule
 
-module can_ifc_axi
-#(
-  // Width of S_AXI data bus
-  parameter integer C_S_AXI_DATA_WIDTH = 32,
-  // Width of S_AXI address bus
-  parameter integer C_S_AXI_ADDR_WIDTH = 8
-)
+module rw_arbiter #()
 (
-  input wire clk_i,
-  output wire reg_rst_o,
-  output wire reg_cs_o,
-  output wire reg_we_o,
-  output wire [7:0] reg_addr_o,
-  output wire [7:0] reg_data_in_o,
-  input wire  [7:0] reg_data_out_i,
-
 	input wire  S_AXI_ACLK,
 	input wire  S_AXI_ARESETN,
+	output reg read_pending,
+	output reg read_active,
+	output reg write_pending,
+	output reg write_active,
+	output reg read_active_edge,
+	output reg write_active_edge,
 
-	input wire  [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
-	input wire  [2:0]                      S_AXI_AWPROT,
-	input wire                             S_AXI_AWVALID,
-	output reg                             S_AXI_AWREADY,
-
-	input wire [C_S_AXI_DATA_WIDTH-1 : 0]     S_AXI_WDATA,
-	input wire [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
-	input wire                                S_AXI_WVALID,
-	output reg                                S_AXI_WREADY,
-
-	output reg [1:0]                       S_AXI_BRESP,
-	output reg                             S_AXI_BVALID,
-	input wire                             S_AXI_BREADY,
-
-	input wire  [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
-	input wire  [2:0]                      S_AXI_ARPROT,
-	input wire                             S_AXI_ARVALID,
-	output reg                             S_AXI_ARREADY,
-
-	output wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA, // TODO: reg
-	output reg  [1:0]                      S_AXI_RRESP,
-	output reg                             S_AXI_RVALID,
-	input wire                             S_AXI_RREADY
+	input wire read_finished,
+	input wire write_finished,
+	
+	input wire ready_read_i,
+	input wire ready_write_i
 );
 
-parameter Tp = 1;
-/*
-input        clk_i;
-output       reg_rst_o;
-output       reg_cs_o;
-output       reg_we_o;
-output [7:0] reg_data_in_o;
-input  [7:0] reg_data_out_i;
-*/
+	wire ready_read_edge;
+	wire ready_write_edge;
+	reg  [1:0] ready_read_hist;
+	reg  [1:0] ready_write_hist;
+	assign ready_read_edge = ready_read_hist[0] ^ ready_read_hist[1];
+	assign ready_write_edge = ready_write_hist[0] ^ ready_write_hist[1];
 
-
-    reg write_pending;
-    reg write_active;
-    reg read_pending;
-    reg read_active;
-
-    reg  [1:0] ready_read_hist;
-    reg  [1:0] ready_write_hist;
-    wire ready_read_edge;
-    wire ready_write_edge;
-    assign ready_read_edge = ready_read_hist[0] ^ ready_read_hist[1];
-    assign ready_write_edge = ready_write_hist[0] ^ ready_write_hist[1];
-    
-    wire read_finished;
-    wire write_finished;
-    
-    reg read_active_edge;
-    reg write_active_edge;
-
-    reg req;
-    reg oack;
-    wire ack_i;
-
-    assign read_finished = S_AXI_RVALID;
-    assign write_finished = S_AXI_BVALID;
 
     // read/write arbitration
-    always @ (posedge S_AXI_ACLK or negedge S_AXI_RST)
+    always @ (posedge S_AXI_ACLK or negedge S_AXI_ARESETN)
     begin
-      if (~S_AXI_RST)
+      if (~S_AXI_ARESETN)
       begin
         write_pending <= 1'b0;
         write_active <= 1'b0;
@@ -180,8 +126,8 @@ input  [7:0] reg_data_out_i;
       end
       else
       begin
-        ready_read_hist <= {ready_read_hist[0], S_AXI_ARVALID};
-        ready_write_hist <= {ready_write_hist[0], S_AXI_AWVALID & S_AXI_WVALID /*& (S_AXI_WSTRB == 4'b1111)*/};
+        ready_read_hist <= {ready_read_hist[0], ready_read_i};
+        ready_write_hist <= {ready_write_hist[0], ready_write_i /*& (S_AXI_WSTRB == 4'b1111)*/};
 
         /*
         if(S_AXI_AWVALID & S_AXI_WVALID & (S_AXI_WSTRB != 4'b1111))
@@ -241,6 +187,75 @@ input  [7:0] reg_data_out_i;
         end
       end
     end
+endmodule
+
+module can_ifc_axi
+#(
+  // Width of S_AXI data bus
+  parameter integer C_S_AXI_DATA_WIDTH = 32,
+  // Width of S_AXI address bus
+  parameter integer C_S_AXI_ADDR_WIDTH = 8
+)
+(
+	input wire clk_i,
+	output wire reg_rst_o,
+	output wire reg_cs_o,
+	output wire reg_we_o,
+	output wire [7:0] reg_addr_o,
+	output wire [7:0] reg_data_in_o,
+	input wire  [7:0] reg_data_out_i,
+
+	input wire  S_AXI_ACLK,
+	input wire  S_AXI_ARESETN,
+
+	input wire  [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_AWADDR,
+	input wire  [2:0]                      S_AXI_AWPROT,
+	input wire                             S_AXI_AWVALID,
+	output reg                             S_AXI_AWREADY,
+
+	input wire [C_S_AXI_DATA_WIDTH-1 : 0]     S_AXI_WDATA,
+	input wire [(C_S_AXI_DATA_WIDTH/8)-1 : 0] S_AXI_WSTRB,
+	input wire                                S_AXI_WVALID,
+	output reg                                S_AXI_WREADY,
+
+	output reg [1:0]                       S_AXI_BRESP,
+	output reg                             S_AXI_BVALID,
+	input wire                             S_AXI_BREADY,
+
+	input wire  [C_S_AXI_ADDR_WIDTH-1 : 0] S_AXI_ARADDR,
+	input wire  [2:0]                      S_AXI_ARPROT,
+	input wire                             S_AXI_ARVALID,
+	output reg                             S_AXI_ARREADY,
+
+	output wire [C_S_AXI_DATA_WIDTH-1 : 0] S_AXI_RDATA, // TODO: reg
+	output reg  [1:0]                      S_AXI_RRESP,
+	output reg                             S_AXI_RVALID,
+	input wire                             S_AXI_RREADY
+);
+
+    reg req;
+    reg oack;
+    wire ack_i;
+    wire read_active;
+    wire write_active;
+rw_arbiter rw_arbiter_inst
+(
+	.S_AXI_ACLK(S_AXI_ACLK),
+	.S_AXI_ARESETN(S_AXI_ARESETN),
+	.read_pending(),
+	.read_active(read_active),
+	.write_pending(),
+	.write_active(write_active),
+	.read_active_edge(read_active_edge),
+	.write_active_edge(write_active_edge),
+
+	.read_finished(S_AXI_RVALID && S_AXI_RREADY),
+	.write_finished(S_AXI_BVALID && S_AXI_BREADY),
+	
+	.ready_read_i(S_AXI_ARVALID),
+	.ready_write_i(S_AXI_AWVALID & S_AXI_WVALID)
+);
+
 
     //assign reg_addr_o <= write ? axi_waddr : axi_raddr;
     // assign reg_addr_o - asynchronous, synchronized by protocols expectations
@@ -258,16 +273,18 @@ input  [7:0] reg_data_out_i;
     end
     */
 
-    always @(negedge S_AXI_RST or posedge S_AXI_ACLK)
+    always @(negedge S_AXI_ARESETN or posedge S_AXI_ACLK)
     begin
-      if (~S_AXI_RST)
+      if (~S_AXI_ARESETN)
       begin
+        req <= 1'b0;
         oack <= 1'b0;
         //S_AXI_RDATA <=#C_S_AXI_DATA_WIDTH 0;
-        S_AXI_BRESP <= 0;
+        S_AXI_BRESP <= 2'b00; // OKAY
         S_AXI_BVALID <= 1'b0;
         S_AXI_WREADY <= 1'b0;
         S_AXI_AWREADY <= 1'b0;
+        S_AXI_RRESP <= 0;
       end else
       begin
         // no synchronization necessary
@@ -278,34 +295,50 @@ input  [7:0] reg_data_out_i;
           if (read_active)
           begin
             //S_AXI_RDATA <= reg_data_out_i; // TODO: should be allright, the address is stable ...
-            // read_active will be deasserted after asserting S_AXI_RVALID, so this will execute only 2x
-            S_AXI_RVALID <= ~S_AXI_RVALID;
-            S_AXI_ARREADY <= ~S_AXI_ARREADY;
+            if (S_AXI_RREADY && S_AXI_RVALID)
+            begin
+              S_AXI_RVALID <= 1'b0;
+              S_AXI_ARREADY <= 1'b0;
+            end
+            else if (~S_AXI_RVALID)
+            begin
+              S_AXI_RVALID <= 1'b1;
+              S_AXI_ARREADY <= 1'b1;
+              S_AXI_RRESP <= 2'b00; // OKAY
+            end
           end else if (write_active)
           begin
-            S_AXI_BRESP <= 2'b00; // TODO: value?
-            // write_active will be deasserted after asserting S_AXI_RVALID, so this will execute only 2x
-            S_AXI_BVALID <= ~S_AXI_BVALID;
-            S_AXI_WREADY <= ~S_AXI_WREADY;
-            S_AXI_AWREADY <= ~S_AXI_AWREADY;
+            if (S_AXI_BREADY && S_AXI_BVALID)
+            begin
+              S_AXI_BVALID <= 1'b0;
+              S_AXI_WREADY <= 1'b0;
+              S_AXI_AWREADY <= 1'b0;
+            end
+            else if (~S_AXI_BVALID)
+            begin
+              S_AXI_BRESP <= 2'b00; // OKAY
+              S_AXI_BVALID <= 1'b1;
+              S_AXI_WREADY <= 1'b1;
+              S_AXI_AWREADY <= 1'b1;
+            end
           end
           oack <= ~oack;
         end
       end
      end
 
-  assign reg_rst_o       = ~S_AXI_RST;
+  assign reg_rst_o       = ~S_AXI_ARESETN;
   assign reg_we_o        = write_active;
-  assign reg_addr_o      = S_AXI_AWADDR; // TODO: latch?
-  assign reg_data_in_o   = S_AXI_WDATA;
-  assign S_AXI_RDATA     = reg_data_out_i; // TODO: latch?
+  assign reg_data_in_o   = S_AXI_WDATA[7:0];
+  assign S_AXI_RDATA[7:0]= reg_data_out_i; // TODO: latch?
+  assign S_AXI_RDATA[C_S_AXI_DATA_WIDTH-1 : 8] = 0;
 
   can_ifc_async CAN_IFC_ASYNC
   (
     .clk_i(clk_i),
-    .rstn_i(S_AXI_RST),
+    .rstn_i(S_AXI_ARESETN),
     .reg_cs_o(reg_cs_o),
     .req_i(req),
-    .ack_o(ack)
+    .ack_o(ack_i)
   );
 endmodule

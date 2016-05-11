@@ -10,9 +10,10 @@
 
 		// Parameters of Axi Slave Bus Interface S00_AXI
 		parameter integer C_S00_AXI_DATA_WIDTH	= 32,
-		parameter integer C_S00_AXI_ADDR_WIDTH	= 4,
+		parameter integer C_S00_AXI_ADDR_WIDTH	= 8
 
 		// Parameters of Axi Slave Bus Interface S_AXI_INTR
+		/*
 		parameter integer C_S_AXI_INTR_DATA_WIDTH	= 32,
 		parameter integer C_S_AXI_INTR_ADDR_WIDTH	= 5,
 		parameter integer C_NUM_OF_INTR	= 1,
@@ -20,13 +21,14 @@
 		parameter  C_INTR_ACTIVE_STATE	= 32'hFFFFFFFF,
 		parameter integer C_IRQ_SENSITIVITY	= 1,
 		parameter integer C_IRQ_ACTIVE_STATE	= 1
+		*/
 	)
 	(
 		// Users to add ports here
 		input  wire can_clk,
 		input  wire can_rx,
 		output wire can_tx,
-		output wire bus_on_off,
+		output wire bus_off_on,
 		// User ports ends
 		// Do not modify the ports beyond this line
 
@@ -55,6 +57,7 @@
 		input wire  s00_axi_rready,
 
 		// Ports of Axi Slave Bus Interface S_AXI_INTR
+		/*
 		input wire  s_axi_intr_aclk,
 		input wire  s_axi_intr_aresetn,
 		input wire [C_S_AXI_INTR_ADDR_WIDTH-1 : 0] s_axi_intr_awaddr,
@@ -76,8 +79,19 @@
 		output wire [1 : 0] s_axi_intr_rresp,
 		output wire  s_axi_intr_rvalid,
 		input wire  s_axi_intr_rready,
+		*/
 		output wire  irq
 	);
+	wire reg_we;
+	wire reg_cs;
+	wire reg_rst;
+	wire [7:0] reg_data_in;
+	wire [7:0] reg_data_out;
+	wire [7:0] reg_addr;
+	
+	wire irq_n;
+	assign irq = ~irq_n;
+
 // Instantiation of Axi Bus Interface S00_AXI
 	can_ifc_axi # ( 
 		.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH),
@@ -114,13 +128,6 @@
 		.reg_data_out_i(reg_data_out)
 	);
 
-	wire reg_we;
-	wire reg_cs;
-	wire reg_rst;
-	wire [7:0] reg_data_in;
-	wire [7:0] reg_data_out;
-	wire [7:0] reg_addr;
-
 	can_top_raw can_top_raw_inst (
 		.reg_we_i(reg_we),
 		.reg_cs_i(reg_cs),
@@ -133,7 +140,7 @@
 		.rx_i(can_rx),
 		.tx_o(can_tx),
 		.bus_off_on(bus_off_on),
-		.irq_on(irq), // TODO: test the compiler, this is multi-assigned output
+		.irq_on(irq_n),
 		.clkout_o()
 	);
 

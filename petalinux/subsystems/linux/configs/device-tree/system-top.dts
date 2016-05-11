@@ -3,3 +3,10 @@
 / {
 };
 
+&sja1000_0 {
+	compatible = "nxp,sja1000";
+	nxp,external-clock-frequency = <100000000>;
+	interrupt-parent = <&intc>;
+	interrupts = <0 61 4>;
+	reg-io-width = <4>;
+};

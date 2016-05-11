@@ -106,7 +106,7 @@
 // `define   ALTERA_RAM
 
 // Uncomment following line if you want to use CAN in Xilinx devices (embedded memory used)
-`define   XILINX_RAM
+// `define   XILINX_RAM
 
 // Uncomment the line for the ram used in ASIC implementation
 // `define   VIRTUALSILICON_RAM
