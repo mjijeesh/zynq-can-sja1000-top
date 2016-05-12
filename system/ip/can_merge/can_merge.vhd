@@ -14,10 +14,11 @@ entity can_merge is
     Port ( can_rx : out STD_LOGIC;
            can_tx1 : in STD_LOGIC := '1';
            can_tx2 : in STD_LOGIC := '1';
-           can_tx3 : in STD_LOGIC := '1');
+           can_tx3 : in STD_LOGIC := '1';
+           can_tx4 : in STD_LOGIC := '1');
 end can_merge;
 
 architecture Behavioral of can_merge is
 begin
-    can_rx <= can_tx1 and can_tx2 and can_tx3;
+    can_rx <= can_tx1 and can_tx2 and can_tx3 and can_tx4;
 end Behavioral;

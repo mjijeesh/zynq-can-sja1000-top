@@ -7,6 +7,14 @@
 	compatible = "nxp,sja1000";
 	nxp,external-clock-frequency = <100000000>;
 	interrupt-parent = <&intc>;
-	interrupts = <0 61 4>;
+	interrupts = <0 29 4>;
+	reg-io-width = <4>;
+};
+
+&sja1000_1 {
+	compatible = "nxp,sja1000";
+	nxp,external-clock-frequency = <100000000>;
+	interrupt-parent = <&intc>;
+	interrupts = <0 30 4>;
 	reg-io-width = <4>;
 };

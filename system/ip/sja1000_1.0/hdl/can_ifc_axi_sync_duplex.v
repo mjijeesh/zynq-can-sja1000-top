@@ -13,7 +13,7 @@
 		// Width of S_AXI data bus
 		parameter integer C_S_AXI_DATA_WIDTH	= 32,
 		// Width of S_AXI address bus
-		parameter integer C_S_AXI_ADDR_WIDTH	= 8
+		parameter integer C_S_AXI_ADDR_WIDTH	= 10
 	)
 	(
 		// Users to add ports here
@@ -383,7 +383,8 @@
 	*/
 
 	// Output register or memory read data
-	always @( posedge S_AXI_ACLK )
+	// it is already registered in can_top_raw
+	always @*//( posedge S_AXI_ACLK )
 	begin
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -394,17 +395,19 @@
 	      // When there is a valid read address (S_AXI_ARVALID) with 
 	      // acceptance of read address by the slave (axi_arready), 
 	      // output the read dada 
-	      if (slv_reg_rden)
-	        begin
+	      //if (slv_reg_rden)
+	        //begin
 	          axi_rdata[7:0] <= reg_data_out_i;     // register read data
 	          axi_rdata[C_S_AXI_DATA_WIDTH-1 : 8] <= 0;
-	        end   
+	        //end
+	      //else
+	        //axi_rdata <= 0;   
 	    end
-	end    
+	end
 
 	// Add user logic here
-	assign reg_addr_read_o = S_AXI_ARADDR;
-	assign reg_addr_write_o= S_AXI_AWADDR;
+	assign reg_addr_read_o = axi_araddr[ADDR_LSB+8-1 : ADDR_LSB];
+	assign reg_addr_write_o= axi_awaddr[ADDR_LSB+8-1 : ADDR_LSB];
 	assign reg_rst_o       = ~S_AXI_ARESETN;
 	assign reg_re_o        = slv_reg_rden;
 	assign reg_we_o        = slv_reg_wren;

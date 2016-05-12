@@ -10,7 +10,7 @@
 
 		// Parameters of Axi Slave Bus Interface S00_AXI
 		parameter integer C_S00_AXI_DATA_WIDTH	= 32,
-		parameter integer C_S00_AXI_ADDR_WIDTH	= 8
+		parameter integer C_S00_AXI_ADDR_WIDTH	= 16
 
 		// Parameters of Axi Slave Bus Interface S_AXI_INTR
 		/*
@@ -106,6 +106,7 @@
 		.reg_data_out_i(reg_data_out)
 	);
 
+	//assign reg_data_out = reg_addr_read; // DBG
 	can_top_raw can_top_raw_inst (
 		.reg_we_i(reg_we),
 		.reg_re_i(reg_re),

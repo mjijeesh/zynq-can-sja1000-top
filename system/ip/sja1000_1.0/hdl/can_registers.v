@@ -1095,7 +1095,8 @@ always @ ( addr_read or extended_mode or mode or bus_timing_0 or bus_timing_1 or
            arbitration_lost_capture or rx_message_counter or mode_basic or error_capture_code
          )
 begin
-  case({extended_mode, addr_read[4:0]})  /* synthesis parallel_case */ 
+  //data_out = addr_read; // DBG
+  case({extended_mode, addr_read[4:0]})  // synthesis parallel_case 
     {1'h1, 5'd00} :  data_out = {4'b0000, mode_ext[3:1], mode[0]};      // extended mode
     {1'h1, 5'd01} :  data_out = 8'h0;                                   // extended mode
     {1'h1, 5'd02} :  data_out = status;                                 // extended mode
