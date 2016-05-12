@@ -10,7 +10,6 @@ images/
 components/bootloader/*
 subsystems/linux/configs/device-tree/*
 !subsystems/linux/configs/device-tree/system-top.dts
-!subsystems/linux/configs/device-tree/pl.dtsi
 subsystems/linux/configs/u-boot/platform-auto.h
 subsystems/linux/hw-description/*
 !subsystems/linux/hw-description/metadata
