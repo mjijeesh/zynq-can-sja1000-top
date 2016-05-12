@@ -9,6 +9,8 @@ set obj [get_files $design_file]
 generate_target all $obj
 export_ip_user_files -of_objects $obj -no_script -force -quiet
 
+update_compile_order -fileset sources_1
+
 #foreach ip [get_ips] {
 #	create_ip_run $ip
 #}
