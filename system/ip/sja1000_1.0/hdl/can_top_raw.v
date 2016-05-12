@@ -215,10 +215,11 @@ module can_top_raw
 (
   // all reg_* ports are in clk_i clock domain
   reg_we_i,
-  reg_cs_i,
+  reg_re_i,
   reg_data_in,
   reg_data_out,
-  reg_addr_i,
+  reg_addr_read_i,
+  reg_addr_write_i,
   reg_rst_i,
 
   clk_i,
@@ -241,12 +242,14 @@ module can_top_raw
 parameter Tp = 1;
 
 input         reg_we_i;
-input         reg_cs_i;
-input   [7:0] reg_addr_i;
+input         reg_re_i;
+input   [7:0] reg_addr_read_i;
+input   [7:0] reg_addr_write_i;
 input   [7:0] reg_data_in;
 output  [7:0] reg_data_out;
 input         reg_rst_i;
 
+reg     [7:0] reg_data_out;
 
 input        clk_i;
 input        rx_i;
@@ -352,8 +355,6 @@ wire   [7:0] tx_data_11;
 wire   [7:0] tx_data_12;
 /* End: Tx data registers */
 
-wire         cs;
-
 /* Output signals from can_btl module */
 wire         sample_point;
 wire         sampled_bit;
@@ -393,23 +394,33 @@ wire         go_error_frame;
 wire         go_tx;
 wire         send_ack;
 
-wire         rst;
-wire         we;
-wire   [7:0] addr;
-wire   [7:0] data_in;
-reg    [7:0] data_out;
 reg          rx_sync_tmp;
 reg          rx_sync;
+
+wire rst;
+wire we;
+wire re;
+wire cs;
+wire [7:0] addr_read;
+wire [7:0] addr_write;
+
+assign rst       = reg_rst_i;
+assign we        = reg_we_i;
+assign re        = reg_re_i;
+assign cs        = 1'b1;
+assign addr_read = reg_addr_read_i;
+assign addr_write = reg_addr_write_i;
 
 /* Connecting can_registers module */
 can_registers i_can_registers
 ( 
   .clk(clk_i),
   .rst(rst),
-  .cs(cs),
+  .re(re),
   .we(we),
-  .addr(addr),
-  .data_in(data_in),
+  .addr_read(addr_read),
+  .addr_write(addr_write),
+  .data_in(reg_data_in),
   .data_out(data_out_regs),
   .irq_n(irq_on),
 
@@ -578,8 +589,8 @@ can_bsp i_can_bsp
   .tx_point(tx_point),
   .hard_sync(hard_sync),
 
-  .addr(addr),
-  .data_in(data_in),
+  .addr(addr_read),
+  .data_in(reg_data_in),
   .data_out(data_out_fifo),
   .fifo_selected(data_out_fifo_selected),
 
@@ -703,9 +714,9 @@ can_bsp i_can_bsp
 
 
 // Multiplexing wb_dat_o from registers and rx fifo
-always @ (extended_mode or addr or reset_mode)
+always @ (extended_mode or addr_read or reset_mode)
 begin
-  if (extended_mode & (~reset_mode) & ((addr >= 8'd16) && (addr <= 8'd28)) | (~extended_mode) & ((addr >= 8'd20) && (addr <= 8'd29)))
+  if (extended_mode & (~reset_mode) & ((addr_read >= 8'd16) && (addr_read <= 8'd28)) | (~extended_mode) & ((addr_read >= 8'd20) && (addr_read <= 8'd29)))
     data_out_fifo_selected = 1'b1;
   else
     data_out_fifo_selected = 1'b0;
@@ -714,12 +725,12 @@ end
 
 always @ (posedge clk_i)
 begin
-  if (cs & (~we))
+  if (cs & re)
     begin
       if (data_out_fifo_selected)
-        data_out <=#Tp data_out_fifo;
+        reg_data_out <=#Tp data_out_fifo;
       else
-        data_out <=#Tp data_out_regs;
+        reg_data_out <=#Tp data_out_regs;
     end
 end
 
@@ -738,12 +749,5 @@ begin
       rx_sync     <=#Tp rx_sync_tmp;
     end
 end
-
-assign rst       = reg_rst_i;
-assign we        = reg_we_i;
-assign addr      = reg_addr_i;
-assign data_in   = reg_data_in;
-assign reg_data_out = data_out;
-assign cs        = reg_cs_i;
 
 endmodule

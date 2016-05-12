@@ -244,10 +244,10 @@ module can_bsp
   tx_point,
   hard_sync,
 
-  addr,
-  data_in,
-  data_out,
-  fifo_selected,
+  addr, // FIFO read address only
+  data_in, // input data for FIFO and error count settings (looks magical :/)
+  data_out, // from FIFO only
+  fifo_selected, // only forwarded
   
 
 

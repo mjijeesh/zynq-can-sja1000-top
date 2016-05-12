@@ -154,7 +154,7 @@ module can_fifo
   wr,
 
   data_in,
-  addr,
+  addr, // read address
   data_out,
   fifo_selected,
 
