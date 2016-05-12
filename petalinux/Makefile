@@ -7,7 +7,7 @@ config: .configured
 .configured:
 	petalinux-config --get-hw-description ../system --oldconfig
 	$(MAKE) subsystems/linux/configs/u-boot/platform-auto.h
-	touch .configured
+	#touch .configured
 
 build: .configured subsystems/linux/configs/u-boot/platform-auto.h
 	petalinux-build
@@ -22,6 +22,10 @@ bootscript: bootscript.txt
 subsystems/linux/configs/u-boot/platform-auto.h: FORCE | build/linux/u-boot/Makefile
 	$(MAKE) UBOOT_AUTO_CONFIG=y -C build/linux/u-boot autogen-config
 	sed -r -i '/PSSERIAL0 \\/r uboot-extra-env.h' $@
+	# HACK: force enable legacy image format; it is needed for everything (script, kernel, device tree)
+	#       but something sometimes will go crazy and disable it, sometimes it does not
+	#       With this hack it works OK.
+	sed -r -i '/CONFIG_BOOTCOMMAND/a #define CONFIG_IMAGE_FORMAT_LEGACY' $@
 
 build/linux/u-boot/Makefile:
 	petalinux-build -c u-boot
