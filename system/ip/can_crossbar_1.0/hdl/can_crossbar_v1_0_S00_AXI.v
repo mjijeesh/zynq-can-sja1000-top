@@ -54,23 +54,23 @@ assign ifc_rx[3] = line_rx[ifc4_line];
 
 assign line_rx[0] = ~can_en[0] ? 1'b1 :
                    (can1_line == 0 ? can_rx[0] : 1'b1)
-                 & (can1_line == 1 ? can_rx[1] : 1'b1)
-                 & (can1_line == 2 ? can_rx[2] : 1'b1)
-                 & (can1_line == 3 ? can_rx[3] : 1'b1);
+                 & (can2_line == 0 ? can_rx[1] : 1'b1)
+                 & (can3_line == 0 ? can_rx[2] : 1'b1)
+                 & (can4_line == 0 ? can_rx[3] : 1'b1);
 assign line_rx[1] = ~can_en[1] ? 1'b1 :
-                   (can2_line == 0 ? can_rx[0] : 1'b1)
+                   (can1_line == 1 ? can_rx[0] : 1'b1)
                  & (can2_line == 1 ? can_rx[1] : 1'b1)
-                 & (can2_line == 2 ? can_rx[2] : 1'b1)
-                 & (can2_line == 3 ? can_rx[3] : 1'b1);
+                 & (can3_line == 1 ? can_rx[2] : 1'b1)
+                 & (can4_line == 1 ? can_rx[3] : 1'b1);
 assign line_rx[2] = ~can_en[2] ? 1'b1 :
-                   (can3_line == 0 ? can_rx[0] : 1'b1)
-                 & (can3_line == 1 ? can_rx[1] : 1'b1)
+                   (can1_line == 2 ? can_rx[0] : 1'b1)
+                 & (can2_line == 2 ? can_rx[1] : 1'b1)
                  & (can3_line == 2 ? can_rx[2] : 1'b1)
-                 & (can3_line == 3 ? can_rx[3] : 1'b1);
+                 & (can4_line == 2 ? can_rx[3] : 1'b1);
 assign line_rx[3] = ~can_en[3] ? 1'b1 :
-                   (can4_line == 0 ? can_rx[0] : 1'b1)
-                 & (can4_line == 1 ? can_rx[1] : 1'b1)
-                 & (can4_line == 2 ? can_rx[2] : 1'b1)
+                   (can1_line == 3 ? can_rx[0] : 1'b1)
+                 & (can2_line == 3 ? can_rx[1] : 1'b1)
+                 & (can3_line == 3 ? can_rx[2] : 1'b1)
                  & (can4_line == 3 ? can_rx[3] : 1'b1);
 
 /*
@@ -101,20 +101,20 @@ assign can_tx[2] = can_en[2] ? line_tx[can3_line] : 1'b1;
 assign can_tx[3] = can_en[3] ? line_tx[can4_line] : 1'b1;
 
 assign line_tx[0] = (ifc1_line == 0 ? ifc_tx[0] : 1'b1)
-                  & (ifc1_line == 1 ? ifc_tx[1] : 1'b1)
-                  & (ifc1_line == 2 ? ifc_tx[2] : 1'b1)
-                  & (ifc1_line == 3 ? ifc_tx[3] : 1'b1);
-assign line_tx[1] = (ifc2_line == 0 ? ifc_tx[0] : 1'b1)
+                  & (ifc2_line == 0 ? ifc_tx[1] : 1'b1)
+                  & (ifc3_line == 0 ? ifc_tx[2] : 1'b1)
+                  & (ifc4_line == 0 ? ifc_tx[3] : 1'b1);
+assign line_tx[1] = (ifc1_line == 1 ? ifc_tx[0] : 1'b1)
                   & (ifc2_line == 1 ? ifc_tx[1] : 1'b1)
-                  & (ifc2_line == 2 ? ifc_tx[2] : 1'b1)
-                  & (ifc2_line == 3 ? ifc_tx[3] : 1'b1);
-assign line_tx[2] = (ifc3_line == 0 ? ifc_tx[0] : 1'b1)
-                  & (ifc3_line == 1 ? ifc_tx[1] : 1'b1)
+                  & (ifc3_line == 1 ? ifc_tx[2] : 1'b1)
+                  & (ifc4_line == 1 ? ifc_tx[3] : 1'b1);
+assign line_tx[2] = (ifc1_line == 2 ? ifc_tx[0] : 1'b1)
+                  & (ifc2_line == 2 ? ifc_tx[1] : 1'b1)
                   & (ifc3_line == 2 ? ifc_tx[2] : 1'b1)
-                  & (ifc3_line == 3 ? ifc_tx[3] : 1'b1);
-assign line_tx[3] = (ifc4_line == 0 ? ifc_tx[0] : 1'b1)
-                  & (ifc4_line == 1 ? ifc_tx[1] : 1'b1)
-                  & (ifc4_line == 2 ? ifc_tx[2] : 1'b1)
+                  & (ifc4_line == 2 ? ifc_tx[3] : 1'b1);
+assign line_tx[3] = (ifc1_line == 3 ? ifc_tx[0] : 1'b1)
+                  & (ifc2_line == 3 ? ifc_tx[1] : 1'b1)
+                  & (ifc3_line == 3 ? ifc_tx[2] : 1'b1)
                   & (ifc4_line == 3 ? ifc_tx[3] : 1'b1);
 
 endmodule
