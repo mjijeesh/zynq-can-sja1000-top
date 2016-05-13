@@ -488,28 +488,34 @@ static int xcan_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		set reference point (ref_ktime, ref_ts) = (frame_ktime, frame_ts) ??? cummulative loss of precision ? meybe not
 */
 
-static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts)
+static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts, struct net_device *netdev)
 {
 	u32 bitrate = priv->can.bittiming.bitrate; // TODO: I once saw a function for this ...
 	struct xcan_timepoint *ref = &priv->ref_timepoint;
 	ktime_t now_ktime = ktime_get();
 	ktime_t frame_ktime;
+	int corr = 0;
 
 	if (ktime_equal(ref->ktime, ns_to_ktime(0))) {
+		netdev_dbg(netdev, "TS: settings reference %hu = %llu; bitrate = %u", ts, ktime_to_ns(now_ktime), bitrate);
 		ref->ktime = now_ktime;
 		ref->ts = ts;
 		frame_ktime = now_ktime;
 	} else {
 		u16 tsdelta = (ts - ref->ts) & 0xFFFF;
 #define TS2NS(ts) ({ u64 tmp = (ts) * (u64)1000000000; do_div(tmp, bitrate); tmp; })
-		s64 rollover_ns = TS2NS(ts);
+		s64 rollover_ns = TS2NS(65536);
 		ktime_t nowdelta = ktime_sub(now_ktime, ref->ktime);
 		u32 nrollovers = ktime_divns(nowdelta, rollover_ns);
 		
+		//netdev_dbg(netdev, "TS: rollover_ns = %lld, tsdelta = %hu, nowdelta = %llu, nrollovers = %u",
+		//           rollover_ns, tsdelta, ktime_to_ns(nowdelta), nrollovers);
 		frame_ktime = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
 		if (ktime_after(frame_ktime, now_ktime)) {
 			frame_ktime = ktime_sub_ns(frame_ktime, rollover_ns);
+			corr = 1;
 		}
+		netdev_dbg(netdev, "TS: now_ktime - frame_ktime = %lld%s", ktime_to_ns(ktime_sub(now_ktime, frame_ktime)), corr ? ", corr" : "");
 #undef TS2NS
 	}
 	return frame_ktime;
@@ -539,7 +545,7 @@ static int xcan_rx(struct net_device *ndev)
 	struct can_frame *cf;
 	struct sk_buff *skb;
 	struct skb_shared_hwtstamps *hwts;
-	u32 id_xcan, dlc, data[2] = {0, 0};
+	u32 id_xcan, dlc_reg, dlc, rawts, data[2] = {0, 0};
 	ktime_t ts;
 
 	skb = alloc_can_skb(ndev, &cf);
@@ -550,8 +556,8 @@ static int xcan_rx(struct net_device *ndev)
 
 	/* Read a frame from Xilinx zynq CANPS */
 	id_xcan = priv->read_reg(priv, XCAN_RXFIFO_ID_OFFSET);
-	dlc = priv->read_reg(priv, XCAN_RXFIFO_DLC_OFFSET) >>
-				XCAN_DLCR_DLC_SHIFT;
+	dlc_reg = priv->read_reg(priv, XCAN_RXFIFO_DLC_OFFSET);
+	dlc = dlc_reg >> XCAN_DLCR_DLC_SHIFT;
 
 	/* Change Xilinx CAN data length format to socketCAN data format */
 	cf->can_dlc = get_can_dlc(dlc);
@@ -559,9 +565,11 @@ static int xcan_rx(struct net_device *ndev)
 	/* Capture HW timestamp. TODO: only if requested? */
 	hwts = skb_hwtstamps(skb);
 	memset(hwts, 0, sizeof(*hwts));
-	ts = xcan_timestamp2ktime(priv, le32_to_cpu(xcan_get_timestamp(dlc)));
+	rawts = le32_to_cpu(xcan_get_timestamp(dlc_reg));
+	ts = xcan_timestamp2ktime(priv, rawts, ndev);
 	hwts->hwtstamp = ts;
-	netdev_dbg(ndev, "Frame timestamp: raw %hu, transformed %lld ns", xcan_get_timestamp(dlc), ktime_to_ns(ts));
+	netdev_dbg(ndev, "Frame timestamp: dlc 0x%08x, raw 0x%04hx = %hu, transformed %lld ns",
+			   dlc_reg, rawts, rawts, ktime_to_ns(ts));
 
 	/* Change Xilinx CAN ID format to socketCAN ID format */
 	if (id_xcan & XCAN_IDR_IDE_MASK) {
