@@ -5,6 +5,4 @@
 /src/top/top.bxml
 /src/top/top_ooc.xdc
 
-vivado*.jou
-vivado*.log
-.Xil
+edit_*
