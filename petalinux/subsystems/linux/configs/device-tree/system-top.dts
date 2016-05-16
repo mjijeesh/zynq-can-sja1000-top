@@ -18,3 +18,7 @@
 	interrupts = <0 30 4>;
 	reg-io-width = <4>;
 };
+
+&can_crossbar_0 {
+	compatible = "can-crossbar";
+};

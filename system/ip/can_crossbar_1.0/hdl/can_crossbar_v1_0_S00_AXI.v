@@ -26,75 +26,41 @@ assign {ifc4_line, ifc3_line, ifc2_line, ifc1_line} = ctrl_word[15:8];
 assign can_en = ctrl_word[20:16];
 assign can_stby = ctrl_word[21];
 
+wire [3:0] can_line_rx;
 wire [3:0] line_rx;
 wire [3:0] line_tx;
 
-/*
-assign ifc_rx[0] = (ifc1_line == 0 ? line_rx[0] : 1'b1)
-                 & (ifc1_line == 1 ? line_rx[1] : 1'b1)
-                 & (ifc1_line == 2 ? line_rx[2] : 1'b1)
-                 & (ifc1_line == 3 ? line_rx[3] : 1'b1);
-assign ifc_rx[1] = (ifc2_line == 0 ? line_rx[0] : 1'b1)
-                 & (ifc2_line == 1 ? line_rx[1] : 1'b1)
-                 & (ifc2_line == 2 ? line_rx[2] : 1'b1)
-                 & (ifc2_line == 3 ? line_rx[3] : 1'b1);
-assign ifc_rx[2] = (ifc3_line == 0 ? line_rx[0] : 1'b1)
-                 & (ifc3_line == 1 ? line_rx[1] : 1'b1)
-                 & (ifc3_line == 2 ? line_rx[2] : 1'b1)
-                 & (ifc3_line == 3 ? line_rx[3] : 1'b1);
-assign ifc_rx[3] = (ifc4_line == 0 ? line_rx[0] : 1'b1)
-                 & (ifc4_line == 1 ? line_rx[1] : 1'b1)
-                 & (ifc4_line == 2 ? line_rx[2] : 1'b1)
-                 & (ifc4_line == 3 ? line_rx[3] : 1'b1);
-*/
 assign ifc_rx[0] = line_rx[ifc1_line];
 assign ifc_rx[1] = line_rx[ifc2_line];
 assign ifc_rx[2] = line_rx[ifc3_line];
 assign ifc_rx[3] = line_rx[ifc4_line];
 
-assign line_rx[0] = ~can_en[0] ? 1'b1 :
+assign can_line_rx[0] = 
                    (can1_line == 0 ? can_rx[0] : 1'b1)
                  & (can2_line == 0 ? can_rx[1] : 1'b1)
                  & (can3_line == 0 ? can_rx[2] : 1'b1)
                  & (can4_line == 0 ? can_rx[3] : 1'b1);
-assign line_rx[1] = ~can_en[1] ? 1'b1 :
+assign can_line_rx[1] = 
                    (can1_line == 1 ? can_rx[0] : 1'b1)
                  & (can2_line == 1 ? can_rx[1] : 1'b1)
                  & (can3_line == 1 ? can_rx[2] : 1'b1)
                  & (can4_line == 1 ? can_rx[3] : 1'b1);
-assign line_rx[2] = ~can_en[2] ? 1'b1 :
+assign can_line_rx[2] = 
                    (can1_line == 2 ? can_rx[0] : 1'b1)
                  & (can2_line == 2 ? can_rx[1] : 1'b1)
                  & (can3_line == 2 ? can_rx[2] : 1'b1)
                  & (can4_line == 2 ? can_rx[3] : 1'b1);
-assign line_rx[3] = ~can_en[3] ? 1'b1 :
+assign can_line_rx[3] = 
                    (can1_line == 3 ? can_rx[0] : 1'b1)
                  & (can2_line == 3 ? can_rx[1] : 1'b1)
                  & (can3_line == 3 ? can_rx[2] : 1'b1)
                  & (can4_line == 3 ? can_rx[3] : 1'b1);
 
-/*
-assign can_tx[0] = ~can_en[0] ? 1'b1 :
-                   (can1_line == 0 ? line_tx[0] : 1'b1)
-                 & (can1_line == 1 ? line_tx[1] : 1'b1)
-                 & (can1_line == 2 ? line_tx[2] : 1'b1)
-                 & (can1_line == 3 ? line_tx[3] : 1'b1);
-assign can_tx[1] = ~can_en[1] ? 1'b1 :
-                   (can2_line == 0 ? line_tx[0] : 1'b1)
-                 & (can2_line == 1 ? line_tx[1] : 1'b1)
-                 & (can2_line == 2 ? line_tx[2] : 1'b1)
-                 & (can2_line == 3 ? line_tx[3] : 1'b1);
-assign can_tx[2] = ~can_en[2] ? 1'b1 :
-                   (can3_line == 0 ? line_tx[0] : 1'b1)
-                 & (can3_line == 1 ? line_tx[1] : 1'b1)
-                 & (can3_line == 2 ? line_tx[2] : 1'b1)
-                 & (can3_line == 3 ? line_tx[3] : 1'b1);
-assign can_tx[3] = ~can_en[3] ? 1'b1 :
-                   (can4_line == 0 ? line_tx[0] : 1'b1)
-                 & (can4_line == 1 ? line_tx[1] : 1'b1)
-                 & (can4_line == 2 ? line_tx[2] : 1'b1)
-                 & (can4_line == 3 ? line_tx[3] : 1'b1);
-*/
+assign line_rx[0] = can_en[0] ? can_line_rx[0] : line_tx[0];
+assign line_rx[1] = can_en[1] ? can_line_rx[1] : line_tx[1];
+assign line_rx[2] = can_en[2] ? can_line_rx[2] : line_tx[2];
+assign line_rx[3] = can_en[3] ? can_line_rx[3] : line_tx[3];
+
 assign can_tx[0] = can_en[0] ? line_tx[can1_line] : 1'b1;
 assign can_tx[1] = can_en[1] ? line_tx[can2_line] : 1'b1;
 assign can_tx[2] = can_en[2] ? line_tx[can3_line] : 1'b1;
@@ -228,7 +194,7 @@ endmodule
 	//-- Number of Slave Registers 4
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg0;
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg1;
-	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg2;
+	wire [C_S_AXI_DATA_WIDTH-1:0]	slv_reg2;
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg3;
 	wire	 slv_reg_rden;
 	wire	 slv_reg_wren;
@@ -336,7 +302,7 @@ endmodule
 	    begin
 	      slv_reg0 <= 32'b0_1111_11_10_01_00_11_10_01_00;
 	      slv_reg1 <= 0;
-	      slv_reg2 <= 0;
+	      //slv_reg2 <= 0;
 	      slv_reg3 <= 0;
 	    end 
 	  else begin
@@ -357,13 +323,13 @@ endmodule
 	                // Slave register 1
 	                slv_reg1[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
 	              end  
-	          2'h2:
+	          /*2'h2:
 	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
 	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
 	                // Respective byte enables are asserted as per write strobes 
 	                // Slave register 2
 	                slv_reg2[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
-	              end  
+	              end  */
 	          2'h3:
 	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
 	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
@@ -374,7 +340,7 @@ endmodule
 	          default : begin
 	                      slv_reg0 <= slv_reg0;
 	                      slv_reg1 <= slv_reg1;
-	                      slv_reg2 <= slv_reg2;
+	                      //slv_reg2 <= slv_reg2;
 	                      slv_reg3 <= slv_reg3;
 	                    end
 	        endcase
@@ -519,6 +485,22 @@ endmodule
 		.ifc_rx(ifc_rx),
 		.ifc_tx(ifc_tx),
 		.can_stby(can_stby),
+		.ctrl_word(slv_reg0)
+	);
+	
+	wire [3:0] test_can_rx;
+	wire [3:0] test_can_tx;
+	wire [3:0] test_ifc_rx;
+	wire [3:0] test_ifc_tx;
+	assign {test_can_rx, test_ifc_tx} = slv_reg1[7:0];
+	assign slv_reg2 = {24'h0, test_ifc_rx, test_can_tx};
+	cross_impl #() cross_test_inst
+	(
+		.can_rx(test_can_rx),
+		.can_tx(test_can_tx),
+		.ifc_rx(test_ifc_rx),
+		.ifc_tx(test_ifc_tx),
+		.can_stby(),
 		.ctrl_word(slv_reg0)
 	);
 	// User logic ends
