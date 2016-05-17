@@ -2,11 +2,14 @@ echo "Running bootscript ..."
 
 setenv tftp_dir ''
 
-setenv bitstream_image system.bit
-setenv dtb_img system.dtb
-setenv kernel_img image.ub
+setenv tftp_path /uzedcan
+setenv bitstream_image ${tftp_path}/system.bit
+setenv dtb_img ${tftp_path}/system.dtb
+setenv kernel_img ${tftp_path}/image.ub
 
 setenv nfsserverip 192.168.1.75
+#setenv nfsserverip 147.32.86.163
+
 setenv nfspath /export/canbench
 
 setenv bootargs ${bootargs} console=ttyPS0,115200

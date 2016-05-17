@@ -2,7 +2,7 @@
 # 2. peta linux
 # 3. apps (latester)
 
-TFTPROOT := /tftpboot
+TFTPROOT := /tftpboot/uzedcan
 
 system_project:
 	cd system/script && vivado -mode batch -nolog -nojournal -source recreate.tcl

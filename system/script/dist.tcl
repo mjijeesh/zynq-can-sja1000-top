@@ -11,8 +11,7 @@ puts "Project dir: $dir"
 puts "Impl dir: $impl_dir"
 file copy -force $impl_dir/top_wrapper.hwdef $dir/../system.hdf
 file copy -force $impl_dir/top_wrapper.bit $dir/../system.bit
-file copy -force $dir/../system.hdf /tftpboot/system.hdf
-file copy -force $dir/../system.bit /tftpboot/system.bit
+file copy -force $dir/../system.bit /tftpboot/uzedcan/system.bit
 
 cd $dir/..
 exec bootgen -image system.bif -w -process_bitstream bin
