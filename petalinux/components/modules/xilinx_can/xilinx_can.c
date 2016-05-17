@@ -152,6 +152,7 @@ struct xcan_priv {
 	struct clk *bus_clk;
 	struct clk *can_clk;
 	struct xcan_timepoint ref_timepoint;
+	u16 prevhwts;
 };
 
 /* CAN Bittiming constants as per Xilinx CAN specs */
@@ -488,34 +489,59 @@ static int xcan_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		set reference point (ref_ktime, ref_ts) = (frame_ktime, frame_ts) ??? cummulative loss of precision ? meybe not
 */
 
-static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts, struct net_device *netdev)
+static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts, struct net_device *netdev, u32 *tmdiffns)
 {
-	u32 bitrate = priv->can.bittiming.bitrate; // TODO: I once saw a function for this ...
+	u32 bitrate = priv->can.clock.freq;//priv->can.bittiming.bitrate; // TODO: I once saw a function for this ...
 	struct xcan_timepoint *ref = &priv->ref_timepoint;
-	ktime_t now_ktime = ktime_get();
+	//ktime_t now_ktime = ktime_get();
 	ktime_t frame_ktime;
+	ktime_t now_ktime;
+
 	int corr = 0;
 
+	now_ktime = ktime_get();
+
 	if (ktime_equal(ref->ktime, ns_to_ktime(0))) {
-		netdev_dbg(netdev, "TS: settings reference %hu = %llu; bitrate = %u", ts, ktime_to_ns(now_ktime), bitrate);
+		//netdev_dbg(netdev, "TS: settings reference %hu = %llu; bitrate = %u", ts, ktime_to_ns(now_ktime), bitrate);
 		ref->ktime = now_ktime;
 		ref->ts = ts;
 		frame_ktime = now_ktime;
+		*tmdiffns = 0;
+		//netdev_warn(netdev, "TS: sync");
 	} else {
 		u16 tsdelta = (ts - ref->ts) & 0xFFFF;
 #define TS2NS(ts) ({ u64 tmp = (ts) * (u64)1000000000; do_div(tmp, bitrate); tmp; })
+		// nrollovers = nowdelta / rollover_ns
+		// nrollovers = nowdelta / (65536 * 1000000000 / bitrate)
+		// nrollovers = nowdelta * bitrate / (65536 * 1000000000)
 		s64 rollover_ns = TS2NS(65536);
 		ktime_t nowdelta = ktime_sub(now_ktime, ref->ktime);
 		u32 nrollovers = ktime_divns(nowdelta, rollover_ns);
+		//u32 nrollovers = ktime_divns(ns_to_ktime(ktime_to_ns(nowdelta) * bitrate), 65536 * 1000000000ULL);
 		
 		//netdev_dbg(netdev, "TS: rollover_ns = %lld, tsdelta = %hu, nowdelta = %llu, nrollovers = %u",
 		//           rollover_ns, tsdelta, ktime_to_ns(nowdelta), nrollovers);
-		frame_ktime = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
+		
+		// nrollovers * rollover_ns + TS2NS(tsdelta)
+		// nrollovers * (65536 * 1000000000 / bitrate) + (tsdelta * 1000000000 / bitrate)
+		// (nrollovers * 65536 + tsdelta) * 1000000000 / bitrate;
+		//frame_ktime = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
+		frame_ktime = ktime_add_ns(ref->ktime, div_u64(((u64)nrollovers * 65536 + tsdelta) * 1000000000, bitrate));
 		if (ktime_after(frame_ktime, now_ktime)) {
 			frame_ktime = ktime_sub_ns(frame_ktime, rollover_ns);
 			corr = 1;
 		}
-		netdev_dbg(netdev, "TS: now_ktime - frame_ktime = %lld%s", ktime_to_ns(ktime_sub(now_ktime, frame_ktime)), corr ? ", corr" : "");
+		/*netdev_warn(netdev, "TS: ftime = %llu, delay = %lld us%s; hwtime = %hu, hwdiff = %hu, nrollovers = %u, "
+					"tsdelta = %hu, bitrate = %u, ref->ktime = %llu, ref->ts = %hu, now_ktime = %llu",
+					ktime_to_ns(frame_ktime),
+					ktime_to_us(ktime_sub(now_ktime, frame_ktime)),
+					corr ? ", corr" : "",
+					ts,
+					ts - priv->prevhwts,
+					nrollovers, tsdelta, bitrate, ref->ktime, ref->ts, now_ktime);*/
+		
+		priv->prevhwts = ts;
+		*tmdiffns = ktime_to_ns(ktime_sub(now_ktime, frame_ktime)) & 0xFFFFFFFF;
 #undef TS2NS
 	}
 	return frame_ktime;
@@ -546,7 +572,10 @@ static int xcan_rx(struct net_device *ndev)
 	struct sk_buff *skb;
 	struct skb_shared_hwtstamps *hwts;
 	u32 id_xcan, dlc_reg, dlc, rawts, data[2] = {0, 0};
-	ktime_t ts;
+	ktime_t ts, now_ktime;
+	u32 tmdiffns;
+
+	//netdev_warn(ndev, "DBG: xcan_rx, %llu", ktime_to_ns(ktime_get()));
 
 	skb = alloc_can_skb(ndev, &cf);
 	if (unlikely(!skb)) {
@@ -566,10 +595,10 @@ static int xcan_rx(struct net_device *ndev)
 	hwts = skb_hwtstamps(skb);
 	memset(hwts, 0, sizeof(*hwts));
 	rawts = le32_to_cpu(xcan_get_timestamp(dlc_reg));
-	ts = xcan_timestamp2ktime(priv, rawts, ndev);
+	ts = xcan_timestamp2ktime(priv, rawts, ndev, &tmdiffns);
 	hwts->hwtstamp = ts;
-	netdev_dbg(ndev, "Frame timestamp: dlc 0x%08x, raw 0x%04hx = %hu, transformed %lld ns",
-			   dlc_reg, rawts, rawts, ktime_to_ns(ts));
+	//netdev_dbg(ndev, "Frame timestamp: dlc 0x%08x, raw 0x%04hx = %hu, transformed %lld ns",
+	//		   dlc_reg, rawts, rawts, ktime_to_ns(ts));
 
 	/* Change Xilinx CAN ID format to socketCAN ID format */
 	if (id_xcan & XCAN_IDR_IDE_MASK) {
@@ -591,6 +620,7 @@ static int xcan_rx(struct net_device *ndev)
 	/* DW1/DW2 must always be read to remove message from RXFIFO */
 	data[0] = priv->read_reg(priv, XCAN_RXFIFO_DW1_OFFSET);
 	data[1] = priv->read_reg(priv, XCAN_RXFIFO_DW2_OFFSET);
+	data[1] = tmdiffns; // DBG
 
 	if (!(cf->can_id & CAN_RTR_FLAG)) {
 		/* Change Xilinx CAN data format to socketCAN data format */
@@ -785,17 +815,18 @@ static int xcan_rx_poll(struct napi_struct *napi, int quota)
 	u32 isr, ier;
 	int work_done = 0;
 
+	//netdev_warn(ndev, "DBG: xcan_rx_poll");
 	isr = priv->read_reg(priv, XCAN_ISR_OFFSET);
 	while ((isr & XCAN_IXR_RXNEMP_MASK) && (work_done < quota)) {
-		if (isr & XCAN_IXR_RXOK_MASK) {
+		//if (isr & XCAN_IXR_RXOK_MASK) {
 			priv->write_reg(priv, XCAN_ICR_OFFSET,
 				XCAN_IXR_RXOK_MASK);
 			work_done += xcan_rx(ndev);
-		} else {
+		/*} else {
 			priv->write_reg(priv, XCAN_ICR_OFFSET,
 				XCAN_IXR_RXNEMP_MASK);
 			break;
-		}
+		}*/
 		priv->write_reg(priv, XCAN_ICR_OFFSET, XCAN_IXR_RXNEMP_MASK);
 		isr = priv->read_reg(priv, XCAN_ISR_OFFSET);
 	}
@@ -854,6 +885,7 @@ static irqreturn_t xcan_interrupt(int irq, void *dev_id)
 
 	/* Get the interrupt status from Xilinx CAN */
 	isr = priv->read_reg(priv, XCAN_ISR_OFFSET);
+	//netdev_warn(ndev, "DBG: xcan_interrupt: ISR = 0x%08x, IER = 0x%08x", isr, priv->read_reg(priv, XCAN_IER_OFFSET));
 	if (!isr)
 		return IRQ_NONE;
 
@@ -883,6 +915,7 @@ static irqreturn_t xcan_interrupt(int irq, void *dev_id)
 		ier &= ~(XCAN_IXR_RXNEMP_MASK | XCAN_IXR_RXOK_MASK);
 		priv->write_reg(priv, XCAN_IER_OFFSET, ier);
 		napi_schedule(&priv->napi);
+		//xcan_rx_poll(&priv->napi, 64);
 	}
 	return IRQ_HANDLED;
 }
