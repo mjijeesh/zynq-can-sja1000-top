@@ -26,6 +26,7 @@ subsystems/linux/configs/u-boot/platform-auto.h: FORCE | build/linux/u-boot/Make
 	#       but something sometimes will go crazy and disable it, sometimes it does not
 	#       With this hack it works OK.
 	sed -r -i '/CONFIG_BOOTCOMMAND/a #define CONFIG_IMAGE_FORMAT_LEGACY' $@
+	sed -r -i '/CONFIG_BOOTCOMMAND/a #undef CONFIG_BOOTP_SERVERIP' $@
 
 build/linux/u-boot/Makefile:
 	petalinux-build -c u-boot
