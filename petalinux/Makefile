@@ -16,8 +16,9 @@ build: .configured subsystems/linux/configs/u-boot/platform-auto.h
 images/linux/BOOT.BIN: FORCE
 	cd images/linux && petalinux-package --boot --fsbl zynq_fsbl.elf --u-boot u-boot.elf --force
 
-bootscript: bootscript.txt
-	mkimage -A arm -O u-boot -T script -C none -a 0 -e 0 -n "t-Boot Script" -d $< $@
+bootscript: bootscript.txt bootscript.its
+	#mkimage -A arm -O u-boot -T script -C none -a 0 -e 0 -n "t-Boot Script" -d $< $@
+	mkimage -f bootscript.its $@
 
 subsystems/linux/configs/u-boot/platform-auto.h: FORCE | build/linux/u-boot/Makefile
 	$(MAKE) UBOOT_AUTO_CONFIG=y -C build/linux/u-boot autogen-config
@@ -30,5 +31,11 @@ subsystems/linux/configs/u-boot/platform-auto.h: FORCE | build/linux/u-boot/Make
 
 build/linux/u-boot/Makefile:
 	petalinux-build -c u-boot
+
+images/linux/system.bit.gz: ../system/system.bit
+	gzip -9 <$< >$@
+
+images/linux/image.ub: FORCE images/linux/system.bit.gz
+	mkimage -f uboot-image.its $@
 
 FORCE:

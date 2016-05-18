@@ -1,14 +1,9 @@
 echo "Running bootscript ..."
 
-setenv tftp_dir ''
-
 setenv tftp_path /uzedcan
-setenv bitstream_image ${tftp_path}/system.bit
-setenv dtb_img ${tftp_path}/system.dtb
-setenv kernel_img ${tftp_path}/image.ub
 
-setenv nfsserverip 192.168.1.75
-#setenv nfsserverip 147.32.86.163
+#setenv nfsserverip 192.168.1.75
+setenv nfsserverip 147.32.86.163
 
 setenv nfspath /export/canbench
 
@@ -17,14 +12,12 @@ setenv bootargs ${bootargs} console=ttyPS0,115200
 # If duplicate parameters are present, the later will take effect.
 setenv bootargs ${bootargs} ip=${ipaddr} root=/dev/nfs rw nfsroot=${nfsserverip}:${nfspath}
 
+setenv image_img ${tftp_path}/image.ub
+setenv image_tftp 'echo === Loading boot image; tftpboot ${netstart} ${tftp_dir}${image_img}; fdt addr ${netstart}'
+setenv bitstream_unpack 'fdt get size filesize /images/fpga@1 data; imxtract ${netstart} fpga@1 ${bitstream_load_address}'
+setenv boot_now 'bootm ${netstart}'
+
 setenv bitstream_load_address 0x04000000
-
-setenv bitstream_tftp 'echo === Loading FPGA bitstream; tftpboot ${bitstream_load_address} ${tftp_dir}${bitstream_image}'
-setenv dtb_tftp 'echo === Loading Device Tree; tftpboot ${dtbnetstart} ${tftp_dir}${dtb_img}'
-setenv kernel_tftp 'echo === Loading Linux kernel; tftpboot ${netstart} ${tftp_dir}${kernel_img}'
-
 setenv bitstream_load 'fpga loadb 0 ${bitstream_load_address} ${filesize}'
 
-setenv boot_now 'bootm ${netstart} - ${dtbnetstart}'
-
-run bitstream_tftp bitstream_load kernel_tftp dtb_tftp boot_now
+run image_tftp bitstream_unpack bitstream_load boot_now

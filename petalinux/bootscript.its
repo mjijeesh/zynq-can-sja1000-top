@@ -1,0 +1,18 @@
+/dts-v1/;
+
+/ {
+	description = "bootscript";
+	#address-cells = <1>;
+
+	images {
+		bootscript@1 {
+			description = "Bootscript";
+			data = /incbin/("./bootscript.txt");
+			type = "script";
+			compression = "none";
+			hash@1 {
+				algo = "crc32";
+			};
+		};
+	};
+};

@@ -14,7 +14,8 @@ petalinux/images/linux/BOOT.BIN: FORCE
 	$(MAKE) -C petalinux images/linux/BOOT.BIN
 
 .PHONY: dist
-dist: system/system.hdf system/system.bit petalinux/bootscript petalinux/images/linux/BOOT.BIN
+dist: system/system.bit petalinux/bootscript petalinux/images/linux/BOOT.BIN petalinux/images/linux/image.ub petalinux/images/linux/system.dtb
+	$(MAKE) -C petalinux images/linux/image.ub
 	cp -t $(TFTPROOT) $^
 
 petalinux_config: system/system.hdf
