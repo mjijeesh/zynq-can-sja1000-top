@@ -483,6 +483,11 @@ static int xcan_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		else
 			nrollovers = floor((now_ktime - ref_ktime)/rollover_ktime)
 			frame_ktime = ref_ktime + nrollovers * rollover_ktime + to_ns(tsdelta)
+			// must do fuzzy compare - the synchronization is not exact and so the frame_time
+			   may actually be before now_time and still not be in the next period, just because
+			   the latency between actual_frame_time and now_time may be lower than when
+			   it was for the first frame, about which it was assumed the two times happened in the same moment
+			   So compare it against half the period to be safe.
 			if frame_ktime > now_ktime
 				frame_ktime -= rollover_ktime
 		set reference point (ref_ktime, ref_ts) = (frame_ktime, frame_ts) ??? cummulative loss of precision ? meybe not
@@ -503,29 +508,31 @@ static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts, struct net_d
 		frame_ktime = now_ktime;
 		*tmdiffns = 0;
 	} else {
+		s32 diff_us;
 		u16 tsdelta = (ts - ref->ts) & 0xFFFF;
 #define TS2NS(ts) div_u64((ts) * (u64)1000000000, freq)
-		// nrollovers = nowdelta / rollover_ns
-		// nrollovers = nowdelta / (65536 * 1000000000 / freq)
-		// nrollovers = nowdelta * freq / (65536 * 1000000000)
 		s64 rollover_ns = TS2NS(65536);
 		ktime_t nowdelta = ktime_sub(now_ktime, ref->ktime);
-		u32 nrollovers = ktime_divns(nowdelta, rollover_ns);
-		//u32 nrollovers = ktime_divns(ns_to_ktime(ktime_to_ns(nowdelta) * freq), 65536 * 1000000000ULL);
-		
+		s64 nrollovers = ktime_divns(nowdelta, rollover_ns);
+
 		frame_ktime = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
-		//frame_ktime = ktime_add_ns(ref->ktime, div_u64(((u64)nrollovers * 65536 + tsdelta) * 1000000000, freq));
-		if (ktime_after(frame_ktime, now_ktime)) {
+
+		diff_us = ktime_to_us(ktime_sub(now_ktime, frame_ktime));
+		diff_us = diff_us < 0 ? -diff_us : diff_us;
+
+		/* If the (magnitude of) delay is greater than half */
+		/* the period, the frame arrived in previous period */
+		if (diff_us*1000*2 > rollover_ns) {
 			frame_ktime = ktime_sub_ns(frame_ktime, rollover_ns);
 		}
-		/*netdev_warn(netdev, "TS: ftime = %llu, delay = %lld us%s; hwtime = %hu, nrollovers = %u, "
-					"tsdelta = %hu, freq = %u, ref->ktime = %llu, ref->ts = %hu, now_ktime = %llu",
+		/*
+		netdev_warn(netdev, "TS: ftime = %llu, delay = %lld us; hwtime = %hu, nrollovers = %llu, "
+					"now_ktime = %llu",
 					ktime_to_ns(frame_ktime),
 					ktime_to_us(ktime_sub(now_ktime, frame_ktime)),
-					corr ? ", corr" : "",
 					ts,
-					nrollovers, tsdelta, freq, ref->ktime, ref->ts, now_ktime);*/
-		
+					nrollovers, ktime_to_ns(now_ktime));
+		*/
 		*tmdiffns = ktime_to_ns(ktime_sub(now_ktime, frame_ktime)) & 0xFFFFFFFF;
 #undef TS2NS
 	}
@@ -598,8 +605,11 @@ static int xcan_rx(struct net_device *ndev)
 	/* DW1/DW2 must always be read to remove message from RXFIFO */
 	data[0] = priv->read_reg(priv, XCAN_RXFIFO_DW1_OFFSET);
 	data[1] = priv->read_reg(priv, XCAN_RXFIFO_DW2_OFFSET);
-	//data[1] = tmdiffns; // DBG
-
+	/*
+	data[0] = (data[0] & 0xFFFF0000) | (u16)((s16)(rawts - priv->ref_timepoint.ts)); // DBG
+	data[1] = tmdiffns; // DBG
+	cf->can_dlc = 8; // DBG
+	*/
 	if (!(cf->can_id & CAN_RTR_FLAG)) {
 		/* Change Xilinx CAN data format to socketCAN data format */
 		if (cf->can_dlc > 0)
