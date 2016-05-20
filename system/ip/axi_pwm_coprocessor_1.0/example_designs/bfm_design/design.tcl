@@ -24,7 +24,6 @@ proc create_ipi_design { offsetfile design_name } {
 	connect_bd_net -net aresetn_net [get_bd_ports ARESETN] [get_bd_pins master_0/M_AXI_LITE_ARESETN] [get_bd_pins axi_pwm_coprocessor_0/S00_AXI_ARESETN]
 
 	# Create External ports
-	set M00_AXI_INIT_AXI_TXN [ create_bd_port -dir I M00_AXI_INIT_AXI_TXN ]
 	set M00_AXI_ERROR [ create_bd_port -dir O M00_AXI_ERROR ]
 	set M00_AXI_TXN_DONE [ create_bd_port -dir O M00_AXI_TXN_DONE ]
 
@@ -36,7 +35,6 @@ connect_bd_intf_net [get_bd_intf_pins slave_0/S_AXI_LITE] [get_bd_intf_pins axi_
 	# Create port connections
 	connect_bd_net -net aclk_net [get_bd_ports ACLK] [get_bd_pins slave_0/S_AXI_LITE_ACLK] [get_bd_pins axi_pwm_coprocessor_0/M00_AXI_ACLK]
 	connect_bd_net -net aresetn_net [get_bd_ports ARESETN] [get_bd_pins slave_0/S_AXI_LITE_ARESETN] [get_bd_pins axi_pwm_coprocessor_0/M00_AXI_ARESETN]
-	connect_bd_net -net init_axi_txn_00 [get_bd_ports M00_AXI_INIT_AXI_TXN] [get_bd_pins axi_pwm_coprocessor_0/M00_AXI_INIT_AXI_TXN]
 	connect_bd_net -net error_00 [get_bd_ports M00_AXI_ERROR] [get_bd_pins axi_pwm_coprocessor_0/M00_AXI_ERROR]
 	connect_bd_net -net txn_done_00 [get_bd_ports M00_AXI_TXN_DONE] [get_bd_pins axi_pwm_coprocessor_0/M00_AXI_TXN_DONE]
 

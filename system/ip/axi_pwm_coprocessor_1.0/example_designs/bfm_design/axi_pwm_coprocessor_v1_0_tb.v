@@ -20,7 +20,6 @@ module axi_pwm_coprocessor_v1_0_tb;
 	reg tb_ACLK;
 	reg tb_ARESETn;
 
-	reg M00_AXI_INIT_AXI_TXN;
 	wire M00_AXI_TXN_DONE;
 	wire M00_AXI_ERROR;
 
