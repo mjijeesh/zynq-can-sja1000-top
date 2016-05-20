@@ -136,7 +136,6 @@ architecture arch_imp of axi_pwm_coprocessor_v1_0 is
 		pwm_wr1 : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
 		pwm_wr2 : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
 
-		INIT_AXI_TXN	: in std_logic;
 		ERROR	: out std_logic;
 		TXN_DONE	: out std_logic;
 		M_AXI_ACLK	: in std_logic;
