@@ -52,7 +52,6 @@ entity axi_pwm_coprocessor_v1_0 is
 		s00_axi_rready	: in std_logic;
 
 		-- Ports of Axi Master Bus Interface M00_AXI
-		m00_axi_init_axi_txn	: in std_logic;
 		m00_axi_error	: out std_logic;
 		m00_axi_txn_done	: out std_logic;
 		m00_axi_aclk	: in std_logic;
@@ -88,6 +87,14 @@ architecture arch_imp of axi_pwm_coprocessor_v1_0 is
 		C_S_AXI_ADDR_WIDTH	: integer	:= 5
 		);
 		port (
+		pwm_state_o : out std_logic_vector(1 downto 0);
+		pwm_enabled_o : out std_logic;
+
+		pwm_wr_addr : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr0 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr1 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr2 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -121,6 +128,14 @@ architecture arch_imp of axi_pwm_coprocessor_v1_0 is
 		C_M_TRANSACTIONS_NUM	: integer	:= 4
 		);
 		port (
+		pwm_state_i : in std_logic_vector(1 downto 0);
+		pwm_enabled_i : in std_logic;
+
+		pwm_wr_addr : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr0 : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr1 : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
+		pwm_wr2 : in std_logic_vector(C_M_AXI_DATA_WIDTH-1 downto 0);
+
 		INIT_AXI_TXN	: in std_logic;
 		ERROR	: out std_logic;
 		TXN_DONE	: out std_logic;
@@ -148,6 +163,13 @@ architecture arch_imp of axi_pwm_coprocessor_v1_0 is
 		);
 	end component axi_pwm_coprocessor_v1_0_M00_AXI;
 
+	signal pwm_state : std_logic_vector(1 downto 0);
+	signal pwm_enabled : std_logic;
+
+	signal pwm_wr_addr : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+	signal pwm_wr0 : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+	signal pwm_wr1 : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+	signal pwm_wr2 : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
@@ -157,6 +179,14 @@ axi_pwm_coprocessor_v1_0_S00_AXI_inst : axi_pwm_coprocessor_v1_0_S00_AXI
 		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
 	)
 	port map (
+		pwm_state_o => pwm_state,
+		pwm_enabled_o => pwm_enabled,
+
+		pwm_wr_addr => pwm_wr_addr,
+		pwm_wr0 => pwm_wr0,
+		pwm_wr1 => pwm_wr1,
+		pwm_wr2 => pwm_wr2,
+
 		S_AXI_ACLK	=> s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,
@@ -190,7 +220,14 @@ axi_pwm_coprocessor_v1_0_M00_AXI_inst : axi_pwm_coprocessor_v1_0_M00_AXI
 		C_M_TRANSACTIONS_NUM	=> C_M00_AXI_TRANSACTIONS_NUM
 	)
 	port map (
-		INIT_AXI_TXN	=> m00_axi_init_axi_txn,
+		pwm_state_i => pwm_state,
+		pwm_enabled_i => pwm_enabled,
+
+		pwm_wr_addr => pwm_wr_addr,
+		pwm_wr0 => pwm_wr0,
+		pwm_wr1 => pwm_wr1,
+		pwm_wr2 => pwm_wr2,
+
 		ERROR	=> m00_axi_error,
 		TXN_DONE	=> m00_axi_txn_done,
 		M_AXI_ACLK	=> m00_axi_aclk,
