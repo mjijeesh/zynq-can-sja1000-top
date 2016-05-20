@@ -237,46 +237,46 @@ begin
 	      slv_reg5 <= (others => '0');
 	      slv_reg6 <= (others => '0');
 	      slv_reg7 <= (others => '0');
-          pwm_state <= "00";
-          pwm_enabled <= '0';
+	      pwm_state <= "00";
+	      pwm_enabled <= '0';
 	    else
 	      pwm_per := to_integer(unsigned(slv_reg0(PWM_BITS - 1 downto 0)));
 	      pwm_val := to_integer(unsigned(slv_reg1(PWM_BITS - 1 downto 0)));
 	      pwm_cnt := to_integer(unsigned(slv_reg2(PWM_BITS - 1 downto 0)));
 
-          pwm_wr_addr <= slv_reg3;
+	      pwm_wr_addr <= slv_reg3;
 	      pwm_wr0 <= slv_reg4;
 	      pwm_wr1 <= slv_reg5;
 	      pwm_wr2 <= slv_reg6;
 
 	      slv_reg0 <= slv_reg0;
-          slv_reg1 <= slv_reg1;
-          slv_reg2 <= slv_reg2;
-          slv_reg3 <= slv_reg3;
-          slv_reg4 <= slv_reg4;
-          slv_reg5 <= slv_reg5;
-          slv_reg6 <= slv_reg6;
-          slv_reg7 <= slv_reg7;
+	      slv_reg1 <= slv_reg1;
+	      slv_reg2 <= slv_reg2;
+	      slv_reg3 <= slv_reg3;
+	      slv_reg4 <= slv_reg4;
+	      slv_reg5 <= slv_reg5;
+	      slv_reg6 <= slv_reg6;
+	      slv_reg7 <= slv_reg7;
 
-          if (slv_reg0(31) = '0') then -- The most significant bit of the period enables PWM
-            pwm_state <= "00";
-            pwm_enabled <= '0';
-            slv_reg2(PWM_BITS - 1 downto 0) <= (others => '0');
-          else
-            pwm_enabled <= '1';
-            if pwm_cnt >= pwm_per then
-              slv_reg2(PWM_BITS - 1 downto 0) <= std_logic_vector(to_unsigned(0, PWM_BITS));
-            else
-              slv_reg2(PWM_BITS - 1 downto 0) <= std_logic_vector(to_unsigned(pwm_cnt + 1, PWM_BITS));
-            end if;
-            if (pwm_cnt >= pwm_val) then
-              pwm_state <= "00";
-            elsif pwm_cnt = 0 then
-              pwm_state <= slv_reg1(31 downto 30); -- Two MSB bits of the PWM value controls direction
-            else
-              pwm_state <= pwm_state;
-            end if;
-          end if;
+	      if (slv_reg0(31) = '0') then -- The most significant bit of the period enables PWM
+	        pwm_state <= "00";
+	        pwm_enabled <= '0';
+	        slv_reg2(PWM_BITS - 1 downto 0) <= (others => '0');
+	      else
+	        pwm_enabled <= '1';
+	        if pwm_cnt >= pwm_per then
+	          slv_reg2(PWM_BITS - 1 downto 0) <= std_logic_vector(to_unsigned(0, PWM_BITS));
+	        else
+	          slv_reg2(PWM_BITS - 1 downto 0) <= std_logic_vector(to_unsigned(pwm_cnt + 1, PWM_BITS));
+	        end if;
+	        if (pwm_cnt >= pwm_val) then
+	          pwm_state <= "00";
+	        elsif pwm_cnt = 0 then
+	          pwm_state <= slv_reg1(31 downto 30); -- Two MSB bits of the PWM value controls direction
+	        else
+	          pwm_state <= pwm_state;
+	        end if;
+	      end if;
 
 	      loc_addr := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
 	      if (slv_reg_wren = '1') then

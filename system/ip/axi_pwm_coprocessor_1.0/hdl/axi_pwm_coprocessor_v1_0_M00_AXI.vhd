@@ -212,7 +212,7 @@ begin
 	M_AXI_AWADDR	<= pwm_wr_addr;
 	--AXI 4 write data
 	M_AXI_WDATA	<= pwm_wr1 when (pwm_state_inpr = "01")
-	          else pwm_wr2 when (pwm_state_inpr = "01")
+	          else pwm_wr2 when (pwm_state_inpr = "10")
 	          else pwm_wr0;
 
 	M_AXI_AWPROT	<= "000";
@@ -245,7 +245,7 @@ begin
 		INIT_AXI_TXN <= '0';
 	      else
 	        INIT_AXI_TXN <= '1';
-	        pwm_state_inpr <= pwm_state_inpr;
+	        pwm_state_inpr <= pwm_state_i;
 	      end if;
 	    end if;
 	  end if;
