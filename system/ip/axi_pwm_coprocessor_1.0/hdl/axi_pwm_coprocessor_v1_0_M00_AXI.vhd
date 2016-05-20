@@ -341,7 +341,6 @@ begin
 	     if (rising_edge (M_AXI_ACLK)) then
 	       if (M_AXI_ARESETN = '0' or init_txn_pulse = '1' ) then
 	         axi_wvalid <= '0';
-	         pwm_state_prev <= "00";
 	       else
 	         if (start_single_write = '1') then
 	           --Signal a new address/data command is available by user logic
@@ -546,9 +545,9 @@ begin
 	        read_issued  <= '0';
 	        compare_done   <= '0';
 	        ERROR <= '0';
-            pwm_state_prev <= "00";
+	        pwm_state_prev <= "00";
 	      else
-            pwm_state_prev <= pwm_state_prev;
+	        pwm_state_prev <= pwm_state_prev;
 	        -- state transition
 	        case (mst_exec_state) is
 
