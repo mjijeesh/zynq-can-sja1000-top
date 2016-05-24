@@ -3,9 +3,13 @@ echo "Running bootscript ..."
 setenv tftp_path /uzedcan
 
 #setenv nfsserverip 192.168.1.75
-setenv nfsserverip 147.32.86.163
+#setenv nfsserverip 147.32.86.163
+#setenv nfspath /export/canbench
 
-setenv nfspath /export/canbench
+# pc-sojkam.felk.cvut.cz
+setenv nfsserverip 147.32.86.65
+setenv nfspath /srv/nfs/root-uzedcan
+
 
 setenv bootargs ${bootargs} console=ttyPS0,115200
 # Comment out if out want to use compiled-in values.
