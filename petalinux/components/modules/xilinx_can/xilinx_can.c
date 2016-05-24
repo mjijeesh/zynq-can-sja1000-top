@@ -152,6 +152,11 @@ struct xcan_priv {
 	struct clk *bus_clk;
 	struct clk *can_clk;
 	struct xcan_timepoint ref_timepoint;
+	u32 cantime2ns_mul;
+	u32 ns2cantime_mul;
+	u8 ns2cantime_shr;
+	u8 cantime2ns_shr;
+	u16 _res;
 };
 
 /* CAN Bittiming constants as per Xilinx CAN specs */
@@ -497,46 +502,76 @@ static ktime_t xcan_timestamp2ktime(struct xcan_priv *priv, u16 ts, struct net_d
 {
 	u32 freq = priv->can.clock.freq;
 	struct xcan_timepoint *ref = &priv->ref_timepoint;
-	ktime_t frame_ktime;
-	ktime_t now_ktime;
+	ktime_t ktime_frame;
+	ktime_t ktime_now;
 
-	now_ktime = ktime_get();
+	ktime_now = ktime_get();
 
+#if 0
 	if (ktime_equal(ref->ktime, ns_to_ktime(0))) {
-		ref->ktime = now_ktime;
+		ref->ktime = ktime_now;
 		ref->ts = ts;
-		frame_ktime = now_ktime;
+		ktime_frame = ktime_now;
 		*tmdiffns = 0;
 	} else {
 		s32 diff_us;
 		u16 tsdelta = (ts - ref->ts) & 0xFFFF;
 #define TS2NS(ts) div_u64((ts) * (u64)1000000000, freq)
 		s64 rollover_ns = TS2NS(65536);
-		ktime_t nowdelta = ktime_sub(now_ktime, ref->ktime);
+		ktime_t nowdelta = ktime_sub(ktime_now, ref->ktime);
 		s64 nrollovers = ktime_divns(nowdelta, rollover_ns);
 
-		frame_ktime = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
+		ktime_frame = ktime_add_ns(ref->ktime, nrollovers * rollover_ns + TS2NS(tsdelta));
 
-		diff_us = ktime_to_us(ktime_sub(now_ktime, frame_ktime));
+		diff_us = ktime_to_us(ktime_sub(ktime_now, ktime_frame));
 		diff_us = diff_us < 0 ? -diff_us : diff_us;
 
-		/* If the (magnitude of) delay is greater than half */
+		/* If the (magnitude of) delay is greater than quarter */
 		/* the period, the frame arrived in previous period */
-		if (diff_us*1000*2 > rollover_ns) {
-			frame_ktime = ktime_sub_ns(frame_ktime, rollover_ns);
+		if (diff_us*1000*4 > rollover_ns) {
+			ktime_frame = ktime_sub_ns(ktime_frame, rollover_ns);
 		}
 		/*
 		netdev_warn(netdev, "TS: ftime = %llu, delay = %lld us; hwtime = %hu, nrollovers = %llu, "
-					"now_ktime = %llu",
-					ktime_to_ns(frame_ktime),
-					ktime_to_us(ktime_sub(now_ktime, frame_ktime)),
+					"ktime_now = %llu",
+					ktime_to_ns(ktime_frame),
+					ktime_to_us(ktime_sub(ktime_now, ktime_frame)),
 					ts,
-					nrollovers, ktime_to_ns(now_ktime));
+					nrollovers, ktime_to_ns(ktime_now));
 		*/
-		*tmdiffns = ktime_to_ns(ktime_sub(now_ktime, frame_ktime)) & 0xFFFFFFFF;
+		*tmdiffns = ktime_to_ns(ktime_sub(ktime_now, ktime_frame)) & 0xFFFFFFFF;
 #undef TS2NS
 	}
-	return frame_ktime;
+#else
+	if (ktime_equal(ref->ktime, ns_to_ktime(0))) {
+		ref->ktime = ktime_now;
+		ref->ts = ts;
+	}
+	{
+		u64 cantime_frame; // TODO: 32bit enough?
+		u16 cantime_lsw_frame;
+		s16 cantime_adj;
+		
+		cantime_frame = div_u64(ktime_to_ns(ktime_sub(ktime_now, ref->ktime)), priv->cantime2ns_mul) + ref->ts;
+		//cantime_frame = ((ktime_to_ns(ktime_sub(ktime_now, ref->ktime)) * priv->ns2cantime_mul) >> priv->ns2cantime_shr) + ref->ts;
+
+		cantime_lsw_frame = cantime_frame & 0xffff;
+		cantime_adj = ts - cantime_lsw_frame;
+		cantime_frame += cantime_adj;
+
+		ktime_frame = ktime_add_ns(ref->ktime, ((u64)(cantime_frame - ref->ts) * priv->cantime2ns_mul) >> priv->cantime2ns_shr);
+		
+		//*tmdiffns = (s32)(ktime_to_ns(ktime_sub(ktime_now, ktime_frame)) & 0xFFFFFFFF);
+		*tmdiffns = (s32)cantime_adj * 50;
+		
+		//ref->ktime = ktime_frame;
+		//ref->ts = ts;
+		
+		/* adjust reference */
+		//ref->ktime = ktime_sub_ns(ref->ktime, ((s32)cantime_adj * (s32)priv->cantime2ns_mul) >> (priv->cantime2ns_shr + 7));
+	}
+#endif
+	return ktime_frame;
 }
 
 static u16 xcan_get_timestamp(u32 dlc)
@@ -605,11 +640,12 @@ static int xcan_rx(struct net_device *ndev)
 	/* DW1/DW2 must always be read to remove message from RXFIFO */
 	data[0] = priv->read_reg(priv, XCAN_RXFIFO_DW1_OFFSET);
 	data[1] = priv->read_reg(priv, XCAN_RXFIFO_DW2_OFFSET);
-	/*
+#if 0
 	data[0] = (data[0] & 0xFFFF0000) | (u16)((s16)(rawts - priv->ref_timepoint.ts)); // DBG
 	data[1] = tmdiffns; // DBG
 	cf->can_dlc = 8; // DBG
-	*/
+#endif
+
 	if (!(cf->can_id & CAN_RTR_FLAG)) {
 		/* Change Xilinx CAN data format to socketCAN data format */
 		if (cf->can_dlc > 0)
@@ -1314,6 +1350,14 @@ static int xcan_probe(struct platform_device *pdev)
 	netdev_dbg(ndev, "reg_base=0x%p irq=%d clock=%d, tx fifo depth:%d\n",
 			priv->reg_base, ndev->irq, priv->can.clock.freq,
 			priv->tx_max);
+
+	priv->cantime2ns_shr = 0;
+	priv->cantime2ns_mul = 1000000000U / priv->can.clock.freq;
+	priv->ns2cantime_shr = 20;
+	priv->ns2cantime_mul = div_u64((u64)priv->can.clock.freq << priv->ns2cantime_shr, 1000000000U);
+	
+	netdev_warn(ndev, "cantime2ns_mul = %u, cantime2ns_shr = %u, ns2cantime_mul = %u, ns2cantime_shr = %u",
+	            priv->cantime2ns_mul, priv->cantime2ns_shr, priv->ns2cantime_mul, priv->ns2cantime_shr);
 
 	return 0;
 
