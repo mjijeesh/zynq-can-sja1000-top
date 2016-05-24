@@ -11,10 +11,10 @@ export PKG_CONFIG_SYSROOT_DIR = $(STAGEDIR)
 all: build install
 build: .installed
 
-VER := 4.8.16
-DIR := mc-$(VER)
-ARCHIVE := $(DIR).tar.xz
-URL := http://ftp.midnight-commander.org/$(ARCHIVE)
+VER := 1.06
+DIR := bc-$(VER)
+ARCHIVE := $(DIR).tar.gz
+URL := https://ftp.gnu.org/gnu/bc/$(ARCHIVE)
 
 $(ARCHIVE):
 	wget -c $(URL)
@@ -26,9 +26,8 @@ PREFIX := $(shell pwd)/image
 
 .configured: .unpacked
 	cd $(DIR) && ./configure --host=arm-xilinx-linux-gnueabi \
-		--with-screen=ncurses --disable-vfs-sfs --disable-vfs-sftp \
-		--with-sysroot=$(STAGEDIR) --without-x --without-gpm-mouse \
-		--prefix=/ --exec-prefix=/usr --includedir=/usr/include --datarootdir=/usr/share
+		--with-sysroot=$(STAGEDIR) \
+		--prefix=/ --exec-prefix=/usr --includedir=/usr/include --datadir=/usr/share
 	touch .configured
 .built: .configured
 	cd $(DIR) && $(MAKE)
@@ -38,6 +37,7 @@ PREFIX := $(shell pwd)/image
 	for f in $(PREFIX)/usr/bin/* $(PREFIX)/usr/lib/*; do \
 		echo "Stripping $$f"; $(STRIP) $$f &>/dev/null; done; true
 	(cd $(PREFIX) && find . -not -type d) >.files
+	rm $(STAGEDIR)/usr/bin/dc # remove dc from busybox
 	cp -R -t $(STAGEDIR) $(PREFIX)/*
 	rm -R $(PREFIX)
 	while read f; do \
