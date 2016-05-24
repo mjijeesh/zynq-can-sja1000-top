@@ -23,8 +23,8 @@ wire [3:0] can_en;
 
 assign {can4_line, can3_line, can2_line, can1_line} = ctrl_word[7:0];
 assign {ifc4_line, ifc3_line, ifc2_line, ifc1_line} = ctrl_word[15:8];
-assign can_en = ctrl_word[20:16];
-assign can_stby = ctrl_word[21];
+assign can_en = ctrl_word[19:16];
+assign can_stby = ctrl_word[20];
 
 wire [3:0] can_line_rx;
 wire [3:0] line_rx;
