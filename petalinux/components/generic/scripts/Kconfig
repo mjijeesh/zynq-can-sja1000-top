@@ -1,0 +1,14 @@
+###############################################################################
+# Please modify this file if you want to configure your own generic component.
+# You can uncommon and/or change the following Kconfig elements.
+###############################################################################
+
+
+if GENERIC_SCRIPTS
+	comment "No additional options for SCRIPTS"
+
+# 	config GENERIC_SCRIPTS_OPTION0
+#	bool "option0"
+#	help
+#	  Help text
+endif

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cd /proc
+for f in [0-9]*
+do
+	awk "{print \"$f\", \$2, \$40}"<$f/stat
+done | sort -k3
