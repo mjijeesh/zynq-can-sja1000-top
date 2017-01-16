@@ -1,0 +1,31 @@
+#!/bin/sh
+
+#devmem 0x43c20000 32 0
+
+br=1000000
+#br=1000000
+#br=500000
+#br=250000
+#br=125000
+#br=62500
+
+rmmod xilinx_can
+rmmod sja1000_platform
+modprobe xilinx_can
+modprobe sja1000_platform
+canconfig can0 bitrate $br
+canconfig can1 bitrate $br
+canconfig can2 bitrate $br
+canconfig can3 bitrate $br
+canconfig can0 start
+canconfig can1 start
+canconfig can2 start
+canconfig can3 start
+
+modprobe uio_pdrv_genirq of_id=can-crossbar
+
+for pid in $(ps | grep -- -can | grep -v grep | awk '{print$1}')
+do
+	chrt -r -p 99 $pid
+done
+
