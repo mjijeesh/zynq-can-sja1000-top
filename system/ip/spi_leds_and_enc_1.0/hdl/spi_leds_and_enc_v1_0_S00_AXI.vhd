@@ -17,6 +17,17 @@ entity spi_leds_and_enc_v1_0_S00_AXI is
 	port (
 		-- Users to add ports here
 
+		output_led_line : out std_logic_vector(31 downto 0);
+		output_led_rgb1 : out std_logic_vector(23 downto 0);
+		output_led_rgb2 : out std_logic_vector(23 downto 0);
+		output_led_direct : out std_logic_vector(7 downto 0);
+		output_kbd_direct : out std_logic_vector(3 downto 0);
+
+		in_enc_direct : in std_logic_vector(8 downto 0);
+		in_kbd_direct : in std_logic_vector(3 downto 0);
+		in_enc_8bit : in std_logic_vector(23 downto 0);
+		in_enc_buttons : in std_logic_vector(2 downto 0);
+
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -228,8 +239,8 @@ begin
 	      slv_reg5 <= (others => '0');
 	      slv_reg6 <= (others => '0');
 	      slv_reg7 <= (others => '0');
-	      slv_reg8 <= (others => '0');
-	      slv_reg9 <= (others => '0');
+	      -- slv_reg8 <= (others => '0');
+	      -- slv_reg9 <= (others => '0');
 	      slv_reg10 <= (others => '0');
 	      slv_reg11 <= (others => '0');
 	      slv_reg12 <= (others => '0');
@@ -304,22 +315,22 @@ begin
 	                slv_reg7(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
 	              end if;
 	            end loop;
-	          when b"1000" =>
-	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
-	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
-	                -- Respective byte enables are asserted as per write strobes
-	                -- slave registor 8
-	                slv_reg8(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
-	              end if;
-	            end loop;
-	          when b"1001" =>
-	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
-	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
-	                -- Respective byte enables are asserted as per write strobes
-	                -- slave registor 9
-	                slv_reg9(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
-	              end if;
-	            end loop;
+	          -- when b"1000" =>
+	          --   for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
+	          --     if ( S_AXI_WSTRB(byte_index) = '1' ) then
+	          --       -- Respective byte enables are asserted as per write strobes
+	          --       -- slave registor 8
+	          --       slv_reg8(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
+	          --     end if;
+	          --   end loop;
+	          -- when b"1001" =>
+	          --   for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
+	          --     if ( S_AXI_WSTRB(byte_index) = '1' ) then
+	          --       -- Respective byte enables are asserted as per write strobes
+	          --       -- slave registor 9
+	          --       slv_reg9(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
+	          --     end if;
+	          --   end loop;
 	          when b"1010" =>
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
@@ -377,8 +388,8 @@ begin
 	            slv_reg5 <= slv_reg5;
 	            slv_reg6 <= slv_reg6;
 	            slv_reg7 <= slv_reg7;
-	            slv_reg8 <= slv_reg8;
-	            slv_reg9 <= slv_reg9;
+	            -- slv_reg8 <= slv_reg8;
+	            -- slv_reg9 <= slv_reg9;
 	            slv_reg10 <= slv_reg10;
 	            slv_reg11 <= slv_reg11;
 	            slv_reg12 <= slv_reg12;
@@ -535,6 +546,21 @@ begin
 
 
 	-- Add user logic here
+
+	output_led_line <= slv_reg1(31 downto 0);
+	output_led_rgb1 <= slv_reg4(23 downto 0);
+	output_led_rgb2 <= slv_reg5(23 downto 0);
+	output_led_direct <= slv_reg6(7 downto 0);
+	output_kbd_direct <= slv_reg6(11 downto 8);
+
+	slv_reg8(3 downto 0) <= in_kbd_direct;
+	slv_reg8(15 downto 4) <= (others => '0');
+	slv_reg8(24 downto 16) <= in_enc_direct;
+	slv_reg8(31 downto 25) <= (others => '0');
+
+	slv_reg9(23 downto 0) <= in_enc_8bit;
+	slv_reg9(26 downto 24) <= in_enc_buttons;
+	slv_reg9(31 downto 27) <= (others => '0');
 
 	-- User logic ends
 

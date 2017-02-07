@@ -59,6 +59,17 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 		C_S_AXI_ADDR_WIDTH	: integer	:= 6
 		);
 		port (
+		output_led_line : out std_logic_vector(31 downto 0);
+		output_led_rgb1 : out std_logic_vector(23 downto 0);
+		output_led_rgb2 : out std_logic_vector(23 downto 0);
+		output_led_direct : out std_logic_vector(7 downto 0);
+		output_kbd_direct : out std_logic_vector(3 downto 0);
+
+		in_enc_direct : in std_logic_vector(8 downto 0);
+		in_kbd_direct : in std_logic_vector(3 downto 0);
+		in_enc_8bit : in std_logic_vector(23 downto 0);
+		in_enc_buttons : in std_logic_vector(2 downto 0);
+
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -83,6 +94,61 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 		);
 	end component spi_leds_and_enc_v1_0_S00_AXI;
 
+	component spi_leds_and_enc_v1_0_spi_fsm is
+		generic (
+		data_width	: integer	:= 32;
+		spi_clkdiv	: integer	:= 10
+		);
+		port (
+		reset_in   	: in std_logic;
+
+		clk_in   	: in std_logic;
+		clk_en   	: in std_logic;
+
+		spi_clk   	: out std_logic;
+		spi_cs   	: out std_logic;
+		spi_mosi   	: out std_logic;
+		spi_miso  	: in std_logic;
+
+		tx_data		: in std_logic_vector(data_width-1 downto 0);
+		rx_data		: out std_logic_vector(data_width-1 downto 0);
+
+		trasfer_rq	: in std_logic;
+		transfer_ready	: out std_logic
+		);
+	end component;
+
+	constant spi_data_width : integer := 48;
+	constant spi_clk_div : integer := 10;
+	constant enc_number : integer := 3;
+
+	signal fsm_clk : std_logic;
+	signal fsm_rst : std_logic;
+	signal spi_rx_data : std_logic_vector(spi_data_width-1 downto 0);
+	signal spi_tx_data : std_logic_vector(spi_data_width-1 downto 0);
+	signal spi_transfer_ready : std_logic;
+
+	signal spi_out_rgb1 : std_logic_vector(2 downto 0);
+	signal spi_out_rgb2 : std_logic_vector(2 downto 0);
+
+	signal spi_out_led3 : std_logic;
+	signal spi_out_led4 : std_logic;
+
+	signal output_led_line : std_logic_vector(31 downto 0);
+	signal output_led_rgb1 : std_logic_vector(23 downto 0);
+	signal output_led_rgb2 : std_logic_vector(23 downto 0);
+	signal output_led_direct : std_logic_vector(7 downto 0);
+	signal output_kbd_direct : std_logic_vector(3 downto 0);
+
+	signal in_enc_direct : std_logic_vector(8 downto 0);
+	signal in_kbd_direct : std_logic_vector(3 downto 0);
+	signal in_enc_8bit : std_logic_vector(23 downto 0);
+	signal in_enc_buttons : std_logic_vector(2 downto 0);
+
+	signal enc_cha : std_logic_vector(enc_number downto 1);
+	signal enc_chb : std_logic_vector(enc_number downto 1);
+	signal enc_sw : std_logic_vector(enc_number downto 1);
+
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
@@ -92,6 +158,17 @@ spi_leds_and_enc_v1_0_S00_AXI_inst : spi_leds_and_enc_v1_0_S00_AXI
 		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
 	)
 	port map (
+		output_led_line => output_led_line,
+		output_led_rgb1 => output_led_rgb1,
+		output_led_rgb2 => output_led_rgb2,
+		output_led_direct => output_led_direct,
+		output_kbd_direct => output_kbd_direct,
+
+		in_enc_direct => in_enc_direct,
+		in_kbd_direct => in_kbd_direct,
+		in_enc_8bit => in_enc_8bit,
+		in_enc_buttons => in_enc_buttons,
+
 		S_AXI_ACLK	=> s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,
@@ -116,6 +193,85 @@ spi_leds_and_enc_v1_0_S00_AXI_inst : spi_leds_and_enc_v1_0_S00_AXI
 	);
 
 	-- Add user logic here
+
+spi_leds_and_enc_v1_0_spi_fsm_inst: spi_leds_and_enc_v1_0_spi_fsm
+	generic map (
+		data_width => spi_data_width,
+		spi_clkdiv => spi_clk_div
+	)
+	port map (
+		reset_in => fsm_rst,
+		clk_in => fsm_clk,
+		clk_en => '1',
+
+		spi_clk => spi_led_clk,
+		spi_cs => spi_led_cs,
+		spi_mosi => spi_led_data,
+		spi_miso => spi_led_encin,
+
+		tx_data => spi_tx_data,
+		rx_data => spi_rx_data,
+
+		trasfer_rq => '1',
+		transfer_ready => spi_transfer_ready
+	);
+
+
+	fsm_clk <= s00_axi_aclk;
+	fsm_rst <= not s00_axi_aresetn;
+
+data_logic_process :process
+	begin
+		wait until rising_edge (fsm_clk);
+		if fsm_rst = '1' then
+			spi_led_reset <= '1';
+		elsif spi_transfer_ready = '1' then
+			spi_led_reset <= '0';
+		end if;
+	end process;
+
+	spi_tx_data(47) <= '0';
+	spi_tx_data(46 downto 44) <= spi_out_rgb1;
+	spi_tx_data(43 downto 42) <= (others => '0');
+	spi_tx_data(41) <= spi_out_led4;
+	spi_tx_data(40) <= spi_out_led3;
+	spi_tx_data(39 downto 8) <= output_led_line;
+	spi_tx_data(7) <= '0';
+	spi_tx_data(6 downto 3) <= not output_kbd_direct;
+	spi_tx_data(2 downto 0) <= spi_out_rgb2;
+
+	enc_cha(1) <= not spi_rx_data(4);
+	enc_sw(1) <= not spi_rx_data(5);
+	enc_chb(1) <= not spi_rx_data(6);
+
+	enc_cha(2) <= not spi_rx_data(11);
+	enc_sw(2) <= not spi_rx_data(12);
+	enc_chb(2) <= not spi_rx_data(13);
+
+	enc_cha(3) <= not spi_rx_data(8);
+	enc_sw(3) <= not spi_rx_data(9);
+	enc_chb(3) <= not spi_rx_data(10);
+
+	in_kbd_direct <= not spi_rx_data(3 downto 0);
+
+	in_enc_buttons(2) <= enc_sw(1);
+	in_enc_buttons(1) <= enc_sw(2);
+	in_enc_buttons(0) <= enc_sw(3);
+
+	in_enc_8bit <= (others => '0');
+
+	in_enc_direct <= (8 => enc_sw(1), 7 => enc_chb(1), 6 => enc_cha(1),
+	                  5 => enc_sw(2), 4 => enc_chb(2), 3 => enc_cha(2),
+	                  2 => enc_sw(3), 1 => enc_chb(3), 0 => enc_cha(3));
+
+	-- output_led_rgb1 : out std_logic_vector(23 downto 0);
+	-- output_led_rgb2 : out std_logic_vector(23 downto 0);
+	-- output_led_direct : out std_logic_vector(7 downto 0);
+
+	spi_out_rgb1 <= output_led_direct(2 downto 0);
+	spi_out_rgb2 <= output_led_direct(5 downto 3);
+	spi_out_led3 <= output_led_direct(6);
+	spi_out_led4 <= output_led_direct(7);
 
 	-- User logic ends
 
