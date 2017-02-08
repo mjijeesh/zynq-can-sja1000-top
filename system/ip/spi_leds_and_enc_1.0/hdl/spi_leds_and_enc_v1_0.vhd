@@ -143,9 +143,40 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 		);
 	end component;
 
+	component cnt_div is
+		generic (
+		cnt_width_g : natural := 4
+		);
+		port
+		(
+		clk_i     : in std_logic;				--clk to divide
+		en_i      : in std_logic;				--enable bit?
+		reset_i   : in std_logic;				--asynch. reset
+		ratio_i   : in std_logic_vector(cnt_width_g-1 downto 0);--initial value
+		q_out_o   : out std_logic				--generates puls when counter underflows
+		);
+	end component;
+
+	component pulse_gen is
+		generic (
+		duration_width_g : natural := 4
+		);
+		port (
+		clk_i      : in std_logic;				--clk to divide
+		en_i       : in std_logic;				--enable bit?
+		reset_i    : in std_logic;				--asynch. reset
+		trigger_i  : in std_logic;				--start to generate pulse
+		duration_i : in std_logic_vector(duration_width_g-1 downto 0);--duration/interval of the pulse
+		q_out_o    : out std_logic				--generates pulse for given duration
+		);
+	end component;
+
 	constant spi_data_width : integer := 48;
 	constant spi_clk_div : integer := 10;
 	constant enc_number : integer := 3;
+	constant pwm_width : integer := 8;
+	constant pwm_ratio : std_logic_vector(pwm_width-1 downto 0) :=
+	                     std_logic_vector(to_unsigned(2 ** pwm_width - 1, pwm_width));
 
 	signal fsm_clk : std_logic;
 	signal fsm_rst : std_logic;
@@ -177,7 +208,12 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 	signal enc_cha_filt : std_logic_vector(enc_number downto 1);
 	signal enc_chb_filt : std_logic_vector(enc_number downto 1);
 	signal enc_sw_filt : std_logic_vector(enc_number downto 1);
-	signal enc_changes : std_logic_vector(enc_number * 3 - 1 downto 0);
+	signal enc_sw_changed : std_logic_vector(enc_number downto 1);
+	signal enc_pos_changed : std_logic_vector(enc_number downto 1);
+
+	signal pwm_cycle_start : std_logic;
+	signal pwm_rgb1_sig : std_logic_vector(2 downto 0);
+	signal pwm_rgb2_sig : std_logic_vector(2 downto 0);
 
 begin
 
@@ -246,6 +282,18 @@ spi_leds_and_enc_v1_0_spi_fsm_inst: spi_leds_and_enc_v1_0_spi_fsm
 		transfer_ready => spi_transfer_ready
 	);
 
+cnt_div_inst: cnt_div
+	generic map (
+		cnt_width_g => pwm_width
+	)
+	port map (
+		clk_i => fsm_clk,
+		en_i => spi_transfer_ready,
+		reset_i => fsm_rst,
+		ratio_i => pwm_ratio,
+		q_out_o => pwm_cycle_start
+	);
+
 irc_block: for i in enc_number downto 1 generate
     filt_cha: dff3cke
       port map (
@@ -254,7 +302,7 @@ irc_block: for i in enc_number downto 1 generate
           d_i => enc_cha(i),
           q_o => enc_cha_filt(i),
           ch_o => open,
-          ch_1ck_o => enc_changes((i - 1) * 3 + 0)
+          ch_1ck_o => open
         );
     filt_chb: dff3cke
       port map (
@@ -263,7 +311,7 @@ irc_block: for i in enc_number downto 1 generate
           d_i => enc_chb(i),
           q_o => enc_chb_filt(i),
           ch_o => open,
-          ch_1ck_o => enc_changes((i - 1) * 3 + 1)
+          ch_1ck_o => open
         );
     filt_sw: dff3cke
       port map (
@@ -272,7 +320,7 @@ irc_block: for i in enc_number downto 1 generate
           d_i => enc_sw(i),
           q_o => enc_sw_filt(i),
           ch_o => open,
-          ch_1ck_o => enc_changes((i - 1) * 3 + 2)
+          ch_1ck_o => enc_sw_changed(i)
         );
     qcounter: qcounter_nbit
       generic map (
@@ -288,9 +336,39 @@ irc_block: for i in enc_number downto 1 generate
           a_fall => open,
           b_rise => open,
           b_fall => open,
-          ab_event => open,
+          ab_event => enc_pos_changed(i),
           ab_error => open
         );
+  end generate;
+
+pwm_rgb1_block: for i in 2 downto 0 generate
+    pwm_rgb1: pulse_gen
+      generic map (
+          duration_width_g => pwm_width
+      )
+      port map (
+          clk_i => fsm_clk,
+          en_i => spi_transfer_ready,
+          reset_i => fsm_rst,
+          trigger_i => pwm_cycle_start,
+          duration_i => output_led_rgb1(i * 8 + 7 downto i * 8),
+          q_out_o => pwm_rgb1_sig(i)
+      );
+  end generate;
+
+pwm_rgb2_block: for i in 2 downto 0 generate
+    pwm_rgb2: pulse_gen
+      generic map (
+          duration_width_g => pwm_width
+      )
+      port map (
+          clk_i => fsm_clk,
+          en_i => spi_transfer_ready,
+          reset_i => fsm_rst,
+          trigger_i => pwm_cycle_start,
+          duration_i => output_led_rgb2(i * 8 + 7 downto i * 8),
+          q_out_o => pwm_rgb2_sig(i)
+      );
   end generate;
 
 	fsm_clk <= s00_axi_aclk;
@@ -344,8 +422,8 @@ data_logic_process :process
 	-- output_led_rgb2 : out std_logic_vector(23 downto 0);
 	-- output_led_direct : out std_logic_vector(7 downto 0);
 
-	spi_out_rgb1 <= output_led_direct(2 downto 0);
-	spi_out_rgb2 <= output_led_direct(5 downto 3);
+	spi_out_rgb1 <= output_led_direct(2 downto 0) or pwm_rgb1_sig;
+	spi_out_rgb2 <= output_led_direct(5 downto 3) or pwm_rgb2_sig;
 	spi_out_led3 <= output_led_direct(6);
 	spi_out_led4 <= output_led_direct(7);
 

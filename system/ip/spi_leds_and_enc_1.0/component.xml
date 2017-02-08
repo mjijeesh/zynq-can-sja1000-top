@@ -266,7 +266,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>a5dd367c</spirit:value>
+            <spirit:value>9d17111f</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -282,7 +282,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>a5dd367c</spirit:value>
+            <spirit:value>9d17111f</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -751,13 +751,21 @@
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
+        <spirit:name>hdl/pulse_gen.vhdl</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
         <spirit:name>hdl/dff3cke.vhdl</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
+        <spirit:name>hdl/cnt_div.vhdl</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
         <spirit:name>hdl/spi_leds_and_enc_v1_0.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_2b8cd74c</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_1580b40d</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
     <spirit:fileSet>
@@ -779,7 +787,15 @@
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
+        <spirit:name>hdl/pulse_gen.vhdl</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
         <spirit:name>hdl/dff3cke.vhdl</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
+        <spirit:name>hdl/cnt_div.vhdl</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
@@ -902,8 +918,8 @@
         <xilinx:taxonomy>AXI_Peripheral</xilinx:taxonomy>
       </xilinx:taxonomies>
       <xilinx:displayName>spi_leds_and_enc_v1.0</xilinx:displayName>
-      <xilinx:coreRevision>3</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2017-02-08T13:24:43Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>4</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2017-02-08T18:56:50Z</xilinx:coreCreationDateTime>
       <xilinx:tags>
         <xilinx:tag xilinx:name="user.org:user:spi_leds_and_enc:1.0_ARCHIVE_LOCATION">/home/pi/fpga/zynq/canbech-sw/system/ip/spi_leds_and_enc_1.0</xilinx:tag>
       </xilinx:tags>
@@ -912,7 +928,7 @@
       <xilinx:xilinxVersion>2016.1</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="26f4c345"/>
       <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="493665f4"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="12811736"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="c5d20e03"/>
       <xilinx:checksum xilinx:scope="ports" xilinx:value="08d4b130"/>
       <xilinx:checksum xilinx:scope="hdlParameters" xilinx:value="8b69d831"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="4118bb9b"/>
