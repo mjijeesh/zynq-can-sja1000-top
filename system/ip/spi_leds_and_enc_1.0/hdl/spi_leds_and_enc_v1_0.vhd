@@ -118,6 +118,31 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 		);
 	end component;
 
+	component dff3cke is
+		port (
+		clk_i    : in std_logic;
+		clk_en   : in std_logic;
+		d_i      : in std_logic;
+		q_o      : out std_logic;
+		ch_o     : out std_logic;
+		ch_1ck_o : out std_logic
+		);
+	end component;
+
+	component qcounter_nbit is
+		generic (
+		bitwidth: integer := 32
+		);
+		port (
+		clock: in std_logic;
+		reset: in std_logic;
+		a0, b0: in std_logic;
+		qcount: out std_logic_vector (bitwidth - 1 downto 0);
+		a_rise, a_fall, b_rise, b_fall, ab_event: out std_logic;
+		ab_error: out std_logic
+		);
+	end component;
+
 	constant spi_data_width : integer := 48;
 	constant spi_clk_div : integer := 10;
 	constant enc_number : integer := 3;
@@ -148,6 +173,11 @@ architecture arch_imp of spi_leds_and_enc_v1_0 is
 	signal enc_cha : std_logic_vector(enc_number downto 1);
 	signal enc_chb : std_logic_vector(enc_number downto 1);
 	signal enc_sw : std_logic_vector(enc_number downto 1);
+
+	signal enc_cha_filt : std_logic_vector(enc_number downto 1);
+	signal enc_chb_filt : std_logic_vector(enc_number downto 1);
+	signal enc_sw_filt : std_logic_vector(enc_number downto 1);
+	signal enc_changes : std_logic_vector(enc_number * 3 - 1 downto 0);
 
 begin
 
@@ -216,6 +246,52 @@ spi_leds_and_enc_v1_0_spi_fsm_inst: spi_leds_and_enc_v1_0_spi_fsm
 		transfer_ready => spi_transfer_ready
 	);
 
+irc_block: for i in enc_number downto 1 generate
+    filt_cha: dff3cke
+      port map (
+          clk_i => fsm_clk,
+          clk_en => spi_transfer_ready,
+          d_i => enc_cha(i),
+          q_o => enc_cha_filt(i),
+          ch_o => open,
+          ch_1ck_o => enc_changes((i - 1) * 3 + 0)
+        );
+    filt_chb: dff3cke
+      port map (
+          clk_i => fsm_clk,
+          clk_en => spi_transfer_ready,
+          d_i => enc_chb(i),
+          q_o => enc_chb_filt(i),
+          ch_o => open,
+          ch_1ck_o => enc_changes((i - 1) * 3 + 1)
+        );
+    filt_sw: dff3cke
+      port map (
+          clk_i => fsm_clk,
+          clk_en => spi_transfer_ready,
+          d_i => enc_sw(i),
+          q_o => enc_sw_filt(i),
+          ch_o => open,
+          ch_1ck_o => enc_changes((i - 1) * 3 + 2)
+        );
+    qcounter: qcounter_nbit
+      generic map (
+          bitwidth => 8
+        )
+      port map (
+          clock => fsm_clk,
+          reset => fsm_rst,
+          a0 => enc_cha_filt(i),
+          b0 => enc_chb_filt(i),
+          qcount => in_enc_8bit((3 - i) * 8 + 7 downto (3 - i) * 8),
+          a_rise => open,
+          a_fall => open,
+          b_rise => open,
+          b_fall => open,
+          ab_event => open,
+          ab_error => open
+        );
+  end generate;
 
 	fsm_clk <= s00_axi_aclk;
 	fsm_rst <= not s00_axi_aresetn;
@@ -254,11 +330,11 @@ data_logic_process :process
 
 	in_kbd_direct <= not spi_rx_data(3 downto 0);
 
-	in_enc_buttons(2) <= enc_sw(1);
-	in_enc_buttons(1) <= enc_sw(2);
-	in_enc_buttons(0) <= enc_sw(3);
+	in_enc_buttons(2) <= enc_sw_filt(1);
+	in_enc_buttons(1) <= enc_sw_filt(2);
+	in_enc_buttons(0) <= enc_sw_filt(3);
 
-	in_enc_8bit <= (others => '0');
+	-- in_enc_8bit <= (others => '0');
 
 	in_enc_direct <= (8 => enc_sw(1), 7 => enc_chb(1), 6 => enc_cha(1),
 	                  5 => enc_sw(2), 4 => enc_chb(2), 3 => enc_cha(2),
