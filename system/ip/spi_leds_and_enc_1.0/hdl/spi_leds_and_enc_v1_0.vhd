@@ -394,17 +394,17 @@ data_logic_process :process
 	spi_tx_data(6 downto 3) <= not output_kbd_direct;
 	spi_tx_data(2 downto 0) <= spi_out_rgb2;
 
-	enc_cha(1) <= not spi_rx_data(4);
+	enc_chb(1) <= not spi_rx_data(4);
 	enc_sw(1) <= not spi_rx_data(5);
-	enc_chb(1) <= not spi_rx_data(6);
+	enc_cha(1) <= not spi_rx_data(6);
 
-	enc_cha(2) <= not spi_rx_data(11);
+	enc_chb(2) <= not spi_rx_data(11);
 	enc_sw(2) <= not spi_rx_data(12);
-	enc_chb(2) <= not spi_rx_data(13);
+	enc_cha(2) <= not spi_rx_data(13);
 
-	enc_cha(3) <= not spi_rx_data(8);
+	enc_chb(3) <= not spi_rx_data(8);
 	enc_sw(3) <= not spi_rx_data(9);
-	enc_chb(3) <= not spi_rx_data(10);
+	enc_cha(3) <= not spi_rx_data(10);
 
 	in_kbd_direct <= not spi_rx_data(3 downto 0);
 
