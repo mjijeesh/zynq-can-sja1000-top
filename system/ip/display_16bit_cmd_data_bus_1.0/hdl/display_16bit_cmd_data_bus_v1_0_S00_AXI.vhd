@@ -86,7 +86,9 @@ entity display_16bit_cmd_data_bus_v1_0_S00_AXI is
 
 		trasfer_rq	: out std_logic;
 		trasfer_rq_dbl	: out std_logic;
-		ready_for_rq	: in std_logic
+		ready_for_rq	: in std_logic;
+
+		lcd_reset_bit	: out std_logic
 	);
 end display_16bit_cmd_data_bus_v1_0_S00_AXI;
 
@@ -563,7 +565,7 @@ begin
 
 
 	-- Add user logic here
-
+	lcd_reset_bit <= slv_reg0(1);
 	-- User logic ends
 
 end arch_imp;

@@ -119,7 +119,9 @@ architecture arch_imp of display_16bit_cmd_data_bus_v1_0 is
 
 		trasfer_rq	: out std_logic;
 		trasfer_rq_dbl	: out std_logic;
-		ready_for_rq	: in std_logic
+		ready_for_rq	: in std_logic;
+
+		lcd_reset_bit	: out std_logic
 		);
 	end component display_16bit_cmd_data_bus_v1_0_S00_AXI;
 
@@ -201,6 +203,8 @@ architecture arch_imp of display_16bit_cmd_data_bus_v1_0 is
 	signal	trasfer_rq_dbl : std_logic;
 	signal	ready_for_rq : std_logic;
 
+	signal	lcd_reset_bit: std_logic;
+	signal	lcd_fsm_res_n: std_logic;
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
@@ -237,7 +241,9 @@ display_16bit_cmd_data_bus_v1_0_S00_AXI_inst : display_16bit_cmd_data_bus_v1_0_S
 
 		trasfer_rq => trasfer_rq,
 		trasfer_rq_dbl => trasfer_rq_dbl,
-		ready_for_rq => ready_for_rq
+		ready_for_rq => ready_for_rq,
+
+		lcd_reset_bit => lcd_reset_bit
 	);
 
 -- Instantiation of Axi Bus Interface M00_AXI
@@ -287,7 +293,7 @@ display_16bit_cmd_data_bus_v1_0_io_fsm_inst: display_16bit_cmd_data_bus_v1_0_io_
 		clk_in => fsm_clk,
 		clk_en => '1',
 
-		lcd_res_n => lcd_res_n,
+		lcd_res_n => lcd_fsm_res_n,
 		lcd_cs_n => lcd_cs_n,
 		lcd_wr_n => lcd_wr_n,
 		lcd_rd_n => lcd_rd_n,
@@ -305,6 +311,8 @@ display_16bit_cmd_data_bus_v1_0_io_fsm_inst: display_16bit_cmd_data_bus_v1_0_io_
 	-- Add user logic here
 	fsm_clk <= s00_axi_aclk;
 	fsm_rst <= not s00_axi_aresetn;
+
+	lcd_res_n <= lcd_fsm_res_n and not lcd_reset_bit;
 
 	m00_axi_init_axi_txn <= '0';
 
