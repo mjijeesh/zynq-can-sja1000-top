@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity audio_single_pwm_v1_0_S00_AXI is
 	generic (
 		-- Users to add parameters here
-
+		audio_pwm_width		: integer	:= 24;
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
 
@@ -16,7 +16,8 @@ entity audio_single_pwm_v1_0_S00_AXI is
 	);
 	port (
 		-- Users to add ports here
-
+		audio_pwm_period: out std_logic_vector(audio_pwm_width-1 downto 0);
+		audio_pwm_duty: out std_logic_vector(audio_pwm_width-1 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -535,7 +536,8 @@ begin
 
 
 	-- Add user logic here
-
+	audio_pwm_period <= slv_reg2(audio_pwm_width-1 downto 0);
+	audio_pwm_duty <= slv_reg3(audio_pwm_width-1 downto 0);
 	-- User logic ends
 
 end arch_imp;

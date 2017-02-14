@@ -83,9 +83,13 @@ architecture arch_imp of audio_single_pwm_v1_0 is
 	component audio_single_pwm_v1_0_S00_AXI is
 		generic (
 		C_S_AXI_DATA_WIDTH	: integer	:= 32;
-		C_S_AXI_ADDR_WIDTH	: integer	:= 6
+		C_S_AXI_ADDR_WIDTH	: integer	:= 6;
+		audio_pwm_width		: integer	:= 24
 		);
 		port (
+		audio_pwm_period: out std_logic_vector(audio_pwm_width-1 downto 0);
+		audio_pwm_duty: out std_logic_vector(audio_pwm_width-1 downto 0);
+
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -146,6 +150,44 @@ architecture arch_imp of audio_single_pwm_v1_0 is
 		);
 	end component audio_single_pwm_v1_0_M00_AXI;
 
+	component cnt_div is
+		generic (
+		cnt_width_g : natural := 4
+		);
+		port
+		(
+		clk_i     : in std_logic;				--clk to divide
+		en_i      : in std_logic;				--enable bit?
+		reset_i   : in std_logic;				--asynch. reset
+		ratio_i   : in std_logic_vector(cnt_width_g-1 downto 0);--initial value
+		q_out_o   : out std_logic				--generates puls when counter underflows
+		);
+	end component;
+
+	component pulse_gen is
+		generic (
+		duration_width_g : natural := 4
+		);
+		port (
+		clk_i      : in std_logic;				--clk to divide
+		en_i       : in std_logic;				--enable bit?
+		reset_i    : in std_logic;				--asynch. reset
+		trigger_i  : in std_logic;				--start to generate pulse
+		duration_i : in std_logic_vector(duration_width_g-1 downto 0);--duration/interval of the pulse
+		q_out_o    : out std_logic				--generates pulse for given duration
+		);
+	end component;
+
+	constant audio_pwm_width : integer := 24;
+
+	signal audio_pwm_period: std_logic_vector(audio_pwm_width-1 downto 0);
+	signal audio_pwm_duty: std_logic_vector(audio_pwm_width-1 downto 0);
+
+	signal fsm_clk : std_logic;
+	signal fsm_rst : std_logic;
+
+	signal pwm_cycle_start : std_logic;
+
 	signal m00_axi_init_axi_txn	: std_logic;
 	signal m00_axi_error	: std_logic;
 	signal m00_axi_txn_done	: std_logic;
@@ -156,9 +198,14 @@ begin
 audio_single_pwm_v1_0_S00_AXI_inst : audio_single_pwm_v1_0_S00_AXI
 	generic map (
 		C_S_AXI_DATA_WIDTH	=> C_S00_AXI_DATA_WIDTH,
-		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
+		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH,
+
+		audio_pwm_width	=> audio_pwm_width
 	)
 	port map (
+		audio_pwm_period => audio_pwm_period,
+		audio_pwm_duty  => audio_pwm_duty,
+
 		S_AXI_ACLK	=> s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,
@@ -220,9 +267,36 @@ audio_single_pwm_v1_0_M00_AXI_inst : audio_single_pwm_v1_0_M00_AXI
 
 	-- Add user logic here
 
-    speaker_pwm_out <= '0';
-    irq_rq_out <= '0';
-    m00_axi_init_axi_txn <= '0';
+cnt_div_inst: cnt_div
+	generic map (
+		cnt_width_g => audio_pwm_width
+	)
+	port map (
+		clk_i => fsm_clk,
+		en_i => '1',
+		reset_i => fsm_rst,
+		ratio_i => audio_pwm_period,
+		q_out_o => pwm_cycle_start
+	);
+
+audio_pwm_inst: pulse_gen
+	generic map (
+		duration_width_g => audio_pwm_width
+	)
+	port map (
+		clk_i => fsm_clk,
+		en_i => '1',
+		reset_i => fsm_rst,
+		trigger_i => pwm_cycle_start,
+		duration_i => audio_pwm_duty,
+		q_out_o => speaker_pwm_out
+	);
+
+	irq_rq_out <= '0';
+	m00_axi_init_axi_txn <= '0';
+
+	fsm_clk <= s00_axi_aclk;
+	fsm_rst <= not s00_axi_aresetn;
 	-- User logic ends
 
 end arch_imp;
