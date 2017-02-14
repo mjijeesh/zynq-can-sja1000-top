@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity servo_led_ps2_v1_0_S00_AXI is
 	generic (
 		-- Users to add parameters here
-
+		servo_pwm_width		: integer	:= 24;
 		-- User parameters ends
 		-- Do not modify the parameters beyond this line
 
@@ -17,6 +17,12 @@ entity servo_led_ps2_v1_0_S00_AXI is
 	port (
 		-- Users to add ports here
 		S_REG0		: out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+
+		servo_pwm_period: out std_logic_vector(servo_pwm_width-1 downto 0);
+		servo1_pwm_duty: out std_logic_vector(servo_pwm_width-1 downto 0);
+		servo2_pwm_duty: out std_logic_vector(servo_pwm_width-1 downto 0);
+		servo3_pwm_duty: out std_logic_vector(servo_pwm_width-1 downto 0);
+		servo4_pwm_duty: out std_logic_vector(servo_pwm_width-1 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -123,9 +129,13 @@ architecture arch_imp of servo_led_ps2_v1_0_S00_AXI is
 
 begin
 
-	-- User dignals
+	-- User signals
 	S_REG0		<= slv_reg0;
-
+	servo_pwm_period <= slv_reg3(servo_pwm_width-1 downto 0);
+	servo1_pwm_duty <= slv_reg4(servo_pwm_width-1 downto 0);
+	servo2_pwm_duty <= slv_reg5(servo_pwm_width-1 downto 0);
+	servo3_pwm_duty <= slv_reg6(servo_pwm_width-1 downto 0);
+	servo4_pwm_duty <= slv_reg7(servo_pwm_width-1 downto 0);
 	-- I/O Connections assignments
 
 	S_AXI_AWREADY	<= axi_awready;
