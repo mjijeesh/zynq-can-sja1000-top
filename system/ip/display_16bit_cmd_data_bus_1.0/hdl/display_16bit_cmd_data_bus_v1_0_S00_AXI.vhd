@@ -79,7 +79,14 @@ entity display_16bit_cmd_data_bus_v1_0_S00_AXI is
 		S_AXI_RVALID	: out std_logic;
 		-- Read ready. This signal indicates that the master can
 		-- accept the read data and response information.
-		S_AXI_RREADY	: in std_logic
+		S_AXI_RREADY	: in std_logic;
+
+		data_out	: out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		dc_out		: out std_logic;
+
+		trasfer_rq	: out std_logic;
+		trasfer_rq_dbl	: out std_logic;
+		ready_for_rq	: in std_logic
 	);
 end display_16bit_cmd_data_bus_v1_0_S00_AXI;
 
@@ -193,7 +200,8 @@ begin
 	    if S_AXI_ARESETN = '0' then
 	      axi_wready <= '0';
 	    else
-	      if (axi_wready = '0' and S_AXI_WVALID = '1' and S_AXI_AWVALID = '1') then
+	      if (axi_wready = '0' and S_AXI_WVALID = '1' and S_AXI_AWVALID = '1'
+	          and ready_for_rq = '1') then
 	          -- slave is ready to accept write data when
 	          -- there is a valid write address and write data
 	          -- on the write address and data bus. This design
@@ -236,7 +244,15 @@ begin
 	      slv_reg13 <= (others => '0');
 	      slv_reg14 <= (others => '0');
 	      slv_reg15 <= (others => '0');
+
+	      data_out  <= (others => '0');
+	      dc_out    <= '0';
+
+	      trasfer_rq <= '0';
+	      trasfer_rq_dbl <= '0';
 	    else
+	      trasfer_rq <= '0';
+
 	      loc_addr := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
 	      if (slv_reg_wren = '1') then
 	        case loc_addr is
@@ -264,6 +280,12 @@ begin
 	                slv_reg2(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
 	              end if;
 	            end loop;
+
+	            data_out  <= S_AXI_WDATA;
+	            dc_out    <= '0';
+
+	            trasfer_rq <= '1';
+	            trasfer_rq_dbl <= S_AXI_WSTRB(2);
 	          when b"0011" =>
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
@@ -272,6 +294,12 @@ begin
 	                slv_reg3(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
 	              end if;
 	            end loop;
+
+	            data_out  <= S_AXI_WDATA;
+	            dc_out    <= '1';
+
+	            trasfer_rq <= '1';
+	            trasfer_rq_dbl <= S_AXI_WSTRB(2);
 	          when b"0100" =>
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then

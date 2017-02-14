@@ -493,7 +493,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>a45e6952</spirit:value>
+            <spirit:value>99bb521e</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -509,7 +509,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>a45e6952</spirit:value>
+            <spirit:value>99bb521e</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -537,7 +537,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>48257339</spirit:value>
+            <spirit:value>b09a532b</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -551,7 +551,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>45a2f450</spirit:value>
+            <spirit:value>eb6528c9</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -1339,19 +1339,27 @@
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
+        <spirit:name>hdl/display_16bit_cmd_data_bus_v1_0_io_fsm.vhd</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
         <spirit:name>hdl/display_16bit_cmd_data_bus_v1_0_M00_AXI.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
         <spirit:name>hdl/display_16bit_cmd_data_bus_v1_0.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_2f7b3065</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_038ef7fd</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
     <spirit:fileSet>
       <spirit:name>xilinx_vhdlbehavioralsimulation_view_fileset</spirit:name>
       <spirit:file>
         <spirit:name>hdl/display_16bit_cmd_data_bus_v1_0_S00_AXI.vhd</spirit:name>
+        <spirit:fileType>vhdlSource</spirit:fileType>
+      </spirit:file>
+      <spirit:file>
+        <spirit:name>hdl/display_16bit_cmd_data_bus_v1_0_io_fsm.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
@@ -1400,7 +1408,7 @@
       <spirit:file>
         <spirit:name>xgui/display_16bit_cmd_data_bus_v1_0.tcl</spirit:name>
         <spirit:fileType>tclSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_48257339</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_b09a532b</spirit:userFileType>
         <spirit:userFileType>XGUI_VERSION_2</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
@@ -1526,8 +1534,8 @@
         <xilinx:taxonomy>AXI_Peripheral</xilinx:taxonomy>
       </xilinx:taxonomies>
       <xilinx:displayName>display_16bit_cmd_data_bus_v1.0</xilinx:displayName>
-      <xilinx:coreRevision>2</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2017-02-09T09:19:30Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>4</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2017-02-14T13:49:08Z</xilinx:coreCreationDateTime>
       <xilinx:tags>
         <xilinx:tag xilinx:name="user.org:user:display_16bit_cmd_data_bus:1.0_ARCHIVE_LOCATION">/home/pi/fpga/zynq/canbech-sw/system/ip/display_16bit_cmd_data_bus_1.0</xilinx:tag>
       </xilinx:tags>
@@ -1537,8 +1545,8 @@
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="4150380b"/>
       <xilinx:checksum xilinx:scope="addressSpaces" xilinx:value="64346dae"/>
       <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="493665f4"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="dfb456fa"/>
-      <xilinx:checksum xilinx:scope="ports" xilinx:value="61904a51"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="67328ef0"/>
+      <xilinx:checksum xilinx:scope="ports" xilinx:value="b78ab47f"/>
       <xilinx:checksum xilinx:scope="hdlParameters" xilinx:value="07a22c67"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="6eae480a"/>
     </xilinx:packagingInfo>

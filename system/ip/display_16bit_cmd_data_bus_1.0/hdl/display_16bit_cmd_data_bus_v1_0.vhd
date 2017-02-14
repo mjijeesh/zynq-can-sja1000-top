@@ -112,7 +112,14 @@ architecture arch_imp of display_16bit_cmd_data_bus_v1_0 is
 		S_AXI_RDATA	: out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 		S_AXI_RRESP	: out std_logic_vector(1 downto 0);
 		S_AXI_RVALID	: out std_logic;
-		S_AXI_RREADY	: in std_logic
+		S_AXI_RREADY	: in std_logic;
+
+		data_out	: out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
+		dc_out		: out std_logic;
+
+		trasfer_rq	: out std_logic;
+		trasfer_rq_dbl	: out std_logic;
+		ready_for_rq	: in std_logic
 		);
 	end component display_16bit_cmd_data_bus_v1_0_S00_AXI;
 
@@ -152,9 +159,47 @@ architecture arch_imp of display_16bit_cmd_data_bus_v1_0 is
 		);
 	end component display_16bit_cmd_data_bus_v1_0_M00_AXI;
 
+	component display_16bit_cmd_data_bus_v1_0_io_fsm is
+		generic (
+		data_width	: integer	:= 32;
+		lcd_io_width	: integer	:= 16;
+		lcd_bus_clkdiv	: integer	:= 1
+		);
+		port (
+		reset_in   	: in std_logic;
+
+		clk_in   	: in std_logic;
+		clk_en   	: in std_logic;
+
+		lcd_res_n       : out std_logic;
+		lcd_cs_n        : out std_logic;
+		lcd_wr_n        : out std_logic;
+		lcd_rd_n        : out std_logic;
+		lcd_dc          : out std_logic;
+		lcd_data	: inout std_logic_vector(lcd_io_width-1 downto 0);
+
+		data_out	: in std_logic_vector(data_width-1 downto 0);
+		dc_out		: in std_logic;
+
+		trasfer_rq	: in std_logic;
+		trasfer_rq_dbl	: in std_logic;
+		ready_for_rq	: out std_logic
+		);
+	end component;
+
 	signal m00_axi_init_axi_txn	: std_logic;
 	signal m00_axi_error	: std_logic;
 	signal m00_axi_txn_done	: std_logic;
+
+	signal fsm_clk : std_logic;
+	signal fsm_rst : std_logic;
+
+	signal	data_out : std_logic_vector(31 downto 0);
+	signal	dc_out : std_logic;
+
+	signal	trasfer_rq : std_logic;
+	signal	trasfer_rq_dbl : std_logic;
+	signal	ready_for_rq : std_logic;
 
 begin
 
@@ -185,7 +230,14 @@ display_16bit_cmd_data_bus_v1_0_S00_AXI_inst : display_16bit_cmd_data_bus_v1_0_S
 		S_AXI_RDATA	=> s00_axi_rdata,
 		S_AXI_RRESP	=> s00_axi_rresp,
 		S_AXI_RVALID	=> s00_axi_rvalid,
-		S_AXI_RREADY	=> s00_axi_rready
+		S_AXI_RREADY	=> s00_axi_rready,
+
+		data_out => data_out,
+		dc_out => dc_out,
+
+		trasfer_rq => trasfer_rq,
+		trasfer_rq_dbl => trasfer_rq_dbl,
+		ready_for_rq => ready_for_rq
 	);
 
 -- Instantiation of Axi Bus Interface M00_AXI
@@ -224,16 +276,40 @@ display_16bit_cmd_data_bus_v1_0_M00_AXI_inst : display_16bit_cmd_data_bus_v1_0_M
 		M_AXI_RREADY	=> m00_axi_rready
 	);
 
+display_16bit_cmd_data_bus_v1_0_io_fsm_inst: display_16bit_cmd_data_bus_v1_0_io_fsm
+	generic map (
+		data_width     => 32,
+		lcd_io_width   => 16,
+		lcd_bus_clkdiv => 1
+	)
+	port map (
+		reset_in => fsm_rst,
+		clk_in => fsm_clk,
+		clk_en => '1',
+
+		lcd_res_n => lcd_res_n,
+		lcd_cs_n => lcd_cs_n,
+		lcd_wr_n => lcd_wr_n,
+		lcd_rd_n => lcd_rd_n,
+		lcd_dc => lcd_dc,
+		lcd_data => lcd_data,
+
+		data_out => data_out,
+		dc_out => dc_out,
+
+		trasfer_rq => trasfer_rq,
+		trasfer_rq_dbl => trasfer_rq_dbl,
+		ready_for_rq => ready_for_rq
+	);
+
 	-- Add user logic here
-    m00_axi_init_axi_txn <= '0';
+	fsm_clk <= s00_axi_aclk;
+	fsm_rst <= not s00_axi_aresetn;
 
-    irq_rq_out <= '0';
+	m00_axi_init_axi_txn <= '0';
 
-    lcd_res_n <= '1';
-    lcd_cs_n <= '1';
-    lcd_wr_n <= '1';
-    lcd_rd_n <= '1';
-    lcd_dc   <= '0';
+	irq_rq_out <= '0';
+
 	-- User logic ends
 
 end arch_imp;
