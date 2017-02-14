@@ -213,7 +213,7 @@ servo2_pwm_inst: pulse_gen
 		reset_i => fsm_rst,
 		trigger_i => pwm_cycle_start,
 		duration_i => servo2_pwm_duty,
-		q_out_o => servo1_pwm
+		q_out_o => servo2_pwm
 	);
 
 servo3_pwm_inst: pulse_gen
@@ -226,7 +226,7 @@ servo3_pwm_inst: pulse_gen
 		reset_i => fsm_rst,
 		trigger_i => pwm_cycle_start,
 		duration_i => servo3_pwm_duty,
-		q_out_o => servo1_pwm
+		q_out_o => servo3_pwm
 	);
 
 servo4_pwm_inst: pulse_gen
@@ -239,7 +239,7 @@ servo4_pwm_inst: pulse_gen
 		reset_i => fsm_rst,
 		trigger_i => pwm_cycle_start,
 		duration_i => servo4_pwm_duty,
-		q_out_o => servo1_pwm
+		q_out_o => servo4_pwm
 	);
 
 	SERVO1 <= s_reg0(0) xor servo1_pwm;
