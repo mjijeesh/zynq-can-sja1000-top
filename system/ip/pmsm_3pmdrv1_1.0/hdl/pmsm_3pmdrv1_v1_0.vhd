@@ -549,7 +549,7 @@ pwm_block: for i in pwm_n downto 1 generate
 
     adc_sqn_stat(16) <= HAL_SENS(1);
     adc_sqn_stat(17) <= HAL_SENS(2);
-    adc_sqn_stat(18) <= HAL_SENS(2);
+    adc_sqn_stat(18) <= HAL_SENS(3);
     adc_sqn_stat(19) <= '0';
 
     adc_sqn_stat(20) <= PWM_STAT(1);
