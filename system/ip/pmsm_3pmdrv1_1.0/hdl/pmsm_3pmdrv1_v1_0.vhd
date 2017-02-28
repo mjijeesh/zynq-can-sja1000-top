@@ -258,10 +258,10 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
         adc_mosi: out std_logic;                --spi master out slave in
 
         adc_channels: out std_logic_vector (71 downto 0);    --consistent data of 3 channels
-        measur_count: out std_logic_vector(8 downto 0)        --number of accumulated measurments    
+        measur_count: out std_logic_vector(8 downto 0)        --number of accumulated measurments
     );
     end component;
-    
+
     component dff3 is
     port(
         clk_i   : in std_logic;
@@ -294,11 +294,11 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
     signal irc_pos_act: std_logic_vector(irc_bits_n-1 downto 0);
 
 	--number of ticks per pwm cycle
-	constant pwm_period : std_logic_vector (pwm_width-1 downto 0) := 
-	                   std_logic_vector(to_unsigned(5000, pwm_width));	
+	constant pwm_period : std_logic_vector (pwm_width-1 downto 0) :=
+	                   std_logic_vector(to_unsigned(5000, pwm_width));
 
 	type pwm_match_type is array(1 to 3) of std_logic_vector (pwm_width-1 downto 0);
-	
+
 	signal pwm_match: pwm_match_type;					--point of reversion of pwm output, 0 to 2047
 	signal pwm_count: std_logic_vector (pwm_width-1 downto 0); 	--counter, 0 to 2047
 	signal pwm_sync_at_next: std_logic;
@@ -404,21 +404,21 @@ pmsm_3pmdrv1_v1_0_S_AXI_INTR_inst : pmsm_3pmdrv1_v1_0_S_AXI_INTR
 	-- Add user logic here
 
 dff3_a: dff3
-	port map(	
+	port map(
 		clk_i => fsm_clk,
 		d_i   => IRC_CHA,
 		q_o   => irc_a_dff3
 	);
-	
+
 dff3_b: dff3
-	port map(	
+	port map(
 		clk_i => fsm_clk,
 		d_i   => IRC_CHB,
 		q_o   => irc_b_dff3
 	);
 
 dff3_i: dff3
-	port map(	
+	port map(
 		clk_i => fsm_clk,
 		d_i   => IRC_IDX,
 		q_o   => irc_idx_dff3
@@ -450,13 +450,14 @@ div12_map: cnt_div
 		clk_i  => fsm_clk,
 		en_i   =>'1',
 		reset_i   =>'0',
-		ratio_i   => "11010", -- POZN.: counter detekuje cnt<=1
+		ratio_i   => "11001", -- 100 / 25
 		q_out_o   => clk_4MHz
 	);
-	
+
 	-- ADC needs 3.2 MHz clk when powered from +5V Vcc
 	--	     2.0 MHz clk when +2.7V Vcc
-	-- on the input is 4.17Mhz,but this frequency is divided inside adc_reader by 2 to 2.08 Mhz,
+	-- on the input is 4.0Mhz
+	-- this frequency is divided inside adc_reader by 2 to 2.0 Mhz,
 	--        while we use +3.3V Vcc
 	adc_reader_map: adc_reader
 	port map(
@@ -468,7 +469,7 @@ div12_map: cnt_div
 		adc_sclk => adc_sclk,
 		adc_scs => adc_scs,
 		adc_mosi => adc_mosi,
-		measur_count => adc_m_count		
+		measur_count => adc_m_count
 	);
 
 pwm_block: for i in pwm_n downto 1 generate
@@ -479,7 +480,7 @@ pwm_block: for i in pwm_n downto 1 generate
 		port map (
 			clock => fsm_clk, 				--100 Mhz clk from gpclk on raspberry
 			sync => pwm_sync,				--counter restarts
-			data_valid => pwm_sync_at_next,			
+			data_valid => pwm_sync_at_next,
 			failsafe => fsm_rst,
 			--
 			-- pwm config bits & match word
@@ -497,14 +498,14 @@ pwm_block: for i in pwm_n downto 1 generate
 	process
 	begin
         wait until rising_edge (fsm_clk);
-		IF pwm_count = std_logic_vector(unsigned(pwm_period) - 1) THEN  			
+		IF pwm_count = std_logic_vector(unsigned(pwm_period) - 1) THEN
 			--end of period nearly reached
 			--fetch new pwm match data
 			pwm_sync_at_next <= '1';
 		else
 			pwm_sync_at_next <= '0';
 		end if;
-		
+
 		if pwm_sync_at_next='1' then
 			--end of period reached
 			pwm_count <= (others=>'0');      --reset counter
@@ -528,7 +529,7 @@ pwm_block: for i in pwm_n downto 1 generate
         wait until rising_edge (fsm_clk);
 		if irc_idx_dff3 = '1' then
            irc_idx_pos <= irc_pos_act;
-		end if;  			
+		end if;
 	end process;
 
 	pwm_en_n(1) <= pwm1(31);	--enable positive pwm
@@ -546,17 +547,17 @@ pwm_block: for i in pwm_n downto 1 generate
     adc_sqn_stat(8 downto 0) <= adc_m_count;
     adc_sqn_stat(15 downto 9) <= (others => '0');
 
-    adc_sqn_stat(16) <= HAL_SENS(1); 
-    adc_sqn_stat(17) <= HAL_SENS(2); 
-    adc_sqn_stat(18) <= HAL_SENS(2); 
-    adc_sqn_stat(19) <= '0'; 
+    adc_sqn_stat(16) <= HAL_SENS(1);
+    adc_sqn_stat(17) <= HAL_SENS(2);
+    adc_sqn_stat(18) <= HAL_SENS(2);
+    adc_sqn_stat(19) <= '0';
 
-    adc_sqn_stat(20) <= PWM_STAT(1); 
-    adc_sqn_stat(21) <= PWM_STAT(2); 
-    adc_sqn_stat(22) <= PWM_STAT(3); 
-    adc_sqn_stat(23) <= '0'; 
+    adc_sqn_stat(20) <= PWM_STAT(1);
+    adc_sqn_stat(21) <= PWM_STAT(2);
+    adc_sqn_stat(22) <= PWM_STAT(3);
+    adc_sqn_stat(23) <= '0';
 
-    adc_sqn_stat(24) <= PWR_STAT; 
+    adc_sqn_stat(24) <= PWR_STAT;
     adc_sqn_stat(31 downto 25) <= (others => '0');
 
     adc1(23 downto 0) <= adc_channels(23 downto 0);

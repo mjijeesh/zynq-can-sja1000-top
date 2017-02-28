@@ -434,7 +434,11 @@ begin
 	-- asserted. axi_araddr is reset to zero on reset assertion.
 
 	process (S_AXI_ACLK)
+	variable loc_addr :std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
 	begin
+	  -- Address decoding for reading registers
+	  loc_addr := S_AXI_ARADDR(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+
 	  if rising_edge(S_AXI_ACLK) then
 	    if S_AXI_ARESETN = '0' then
 	      axi_arready <= '0';
@@ -446,7 +450,7 @@ begin
 	        -- Read Address latching
 	        axi_araddr  <= S_AXI_ARADDR;
 
-            if S_AXI_ARADDR = "1000" then
+            if loc_addr = "1000" then
               slv_reg8 <= adc_sqn_stat;
               slv_reg9 <= adc1;
               slv_reg10 <= adc2;
