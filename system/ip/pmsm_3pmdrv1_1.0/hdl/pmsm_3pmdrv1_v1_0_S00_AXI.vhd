@@ -20,6 +20,9 @@ entity pmsm_3pmdrv1_v1_0_S00_AXI is
         pwm2 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
         pwm3 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 
+        pwm_update : out std_logic;
+        pwm_timeout_disable : out std_logic;
+
         irc_pos : in std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
         irc_idx_pos : in std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 
@@ -248,8 +251,10 @@ begin
 	      slv_reg13 <= (others => '0');
 	      slv_reg14 <= (others => '0');
 	      slv_reg15 <= (others => '0');
+	      pwm_update <= '0';
 	    else
 	      loc_addr := axi_awaddr(ADDR_LSB + OPT_MEM_ADDR_BITS downto ADDR_LSB);
+	      pwm_update <= '0';
 	      if (slv_reg_wren = '1') then
 	        case loc_addr is
 	          when b"0000" =>
@@ -285,6 +290,7 @@ begin
 	          --    end if;
 	          --  end loop;
 	          when b"0100" =>
+	            pwm_update <= '1';
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
 	                -- Respective byte enables are asserted as per write strobes
@@ -293,6 +299,7 @@ begin
 	              end if;
 	            end loop;
 	          when b"0101" =>
+	            pwm_update <= '1';
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
 	                -- Respective byte enables are asserted as per write strobes
@@ -301,6 +308,7 @@ begin
 	              end if;
 	            end loop;
 	          when b"0110" =>
+	            pwm_update <= '1';
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
 	                -- Respective byte enables are asserted as per write strobes
@@ -558,6 +566,8 @@ begin
 
 
 	-- Add user logic here
+
+    pwm_timeout_disable <= slv_reg0(8);
 
     slv_reg2 <= irc_pos;
     slv_reg3 <= irc_idx_pos;

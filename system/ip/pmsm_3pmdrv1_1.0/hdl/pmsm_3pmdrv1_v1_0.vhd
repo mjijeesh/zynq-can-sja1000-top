@@ -133,6 +133,9 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
         pwm2 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
         pwm3 : out std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 
+        pwm_update : out std_logic;
+        pwm_timeout_disable : out std_logic;
+
         irc_pos : in std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
         irc_idx_pos : in std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 
@@ -277,6 +280,7 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
     constant irc_bits_n: natural := 32;                    --number of pwm outputs
 
     constant pwm_width: natural := 14;
+    constant pwm_timeout_width: natural := 7;
 
     signal fsm_clk : std_logic;
     signal fsm_rst : std_logic;
@@ -312,6 +316,15 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
     signal pwm2 : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
     signal pwm3 : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
 
+    signal pwm_update : std_logic;
+    signal pwm_timeout_disable : std_logic;
+
+    constant pwm_timeout_reload : std_logic_vector (pwm_timeout_width-1 downto 0) :=
+                   std_logic_vector(to_unsigned(127, pwm_timeout_width));
+    signal pwm_timeout_count: std_logic_vector (pwm_timeout_width-1 downto 0);
+
+    signal failsafe : std_logic;
+
     signal irc_pos : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
     signal irc_idx_pos : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
 
@@ -332,6 +345,9 @@ pmsm_3pmdrv1_v1_0_S00_AXI_inst : pmsm_3pmdrv1_v1_0_S00_AXI
 	    pwm1 => pwm1,
 	    pwm2 => pwm2,
 	    pwm3 => pwm3,
+
+	    pwm_update => pwm_update,
+	    pwm_timeout_disable => pwm_timeout_disable,
 
         irc_pos => irc_pos,
         irc_idx_pos => irc_idx_pos,
@@ -481,7 +497,7 @@ pwm_block: for i in pwm_n downto 1 generate
 			clock => fsm_clk, 				--100 Mhz clk from gpclk on raspberry
 			sync => pwm_sync,				--counter restarts
 			data_valid => pwm_sync_at_next,
-			failsafe => fsm_rst,
+			failsafe => failsafe,
 			--
 			-- pwm config bits & match word
 			--
@@ -498,22 +514,38 @@ pwm_block: for i in pwm_n downto 1 generate
 	process
 	begin
         wait until rising_edge (fsm_clk);
-		IF pwm_count = std_logic_vector(unsigned(pwm_period) - 1) THEN
-			--end of period nearly reached
-			--fetch new pwm match data
-			pwm_sync_at_next <= '1';
+		if fsm_rst = '1' then
+			failsafe <= '1';
+			pwm_timeout_count <= (others=>'0');
 		else
-			pwm_sync_at_next <= '0';
-		end if;
+			if (pwm_update = '1') or (pwm_timeout_disable = '1') then
+				failsafe <= '0';
+				pwm_timeout_count <= pwm_timeout_reload;
+			end if;
 
-		if pwm_sync_at_next='1' then
-			--end of period reached
-			pwm_count <= (others=>'0');      --reset counter
-			pwm_sync <= '1';       				-- inform PWM logic about new period start
-		ELSE  							--end of period not reached
-			pwm_count <= std_logic_vector(unsigned(pwm_count)+1);		--increment counter
-			pwm_sync <= '0';
-		END IF;
+			if pwm_count = std_logic_vector(unsigned(pwm_period) - 1) then
+				--end of period nearly reached
+				--fetch new pwm match data
+				pwm_sync_at_next <= '1';
+			else
+				pwm_sync_at_next <= '0';
+			end if;
+
+			if pwm_sync_at_next='1' then
+				--end of period reached
+				pwm_count <= (others=>'0');      --reset counter
+				pwm_sync <= '1';       				-- inform PWM logic about new period start
+				if unsigned(pwm_timeout_count) = 0  then
+					failsafe <= '1';
+				else
+					pwm_timeout_count <= std_logic_vector(unsigned(pwm_timeout_count)-1);
+				end if;
+
+			else  							--end of period not reached
+				pwm_count <= std_logic_vector(unsigned(pwm_count)+1);		--increment counter
+				pwm_sync <= '0';
+			end if;
+		end if;
 	end process;
 
     fsm_clk <= s00_axi_aclk;
