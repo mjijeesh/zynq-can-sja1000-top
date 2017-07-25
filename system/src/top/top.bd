@@ -283,6 +283,36 @@
             <spirit:direction>out</spirit:direction>
           </spirit:wire>
         </spirit:port>
+        <spirit:port>
+          <spirit:name>FPGA_IO_A</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>10</spirit:left>
+              <spirit:right>1</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>FPGA_IO_B</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>28</spirit:left>
+              <spirit:right>13</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>FPGA_IO_C</spirit:name>
+          <spirit:wire>
+            <spirit:direction>inout</spirit:direction>
+            <spirit:vector>
+              <spirit:left>40</spirit:left>
+              <spirit:right>31</spirit:right>
+            </spirit:vector>
+          </spirit:wire>
+        </spirit:port>
       </spirit:ports>
     </spirit:model>
   </spirit:component>
@@ -583,6 +613,35 @@
           <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_display_16bit_cmd_data_bus_0_0</spirit:configurableElementValue>
         </spirit:configurableElementValues>
       </spirit:componentInstance>
+      <spirit:componentInstance>
+        <spirit:instanceName>dcsimpledrv_to_pmod12_pins_0</spirit:instanceName>
+        <spirit:componentRef spirit:library="user" spirit:name="dcsimpledrv_to_pmod12_pins" spirit:vendor="pikron.com" spirit:version="1.0"/>
+        <spirit:configurableElementValues>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_dcsimpledrv_to_pmod12_pins_0_0</spirit:configurableElementValue>
+        </spirit:configurableElementValues>
+      </spirit:componentInstance>
+      <spirit:componentInstance>
+        <spirit:instanceName>xlconcat_1</spirit:instanceName>
+        <spirit:componentRef spirit:library="ip" spirit:name="xlconcat" spirit:vendor="xilinx.com" spirit:version="2.1"/>
+        <spirit:configurableElementValues>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_xlconcat_1_0</spirit:configurableElementValue>
+          <spirit:configurableElementValue spirit:referenceId="NUM_PORTS">8</spirit:configurableElementValue>
+        </spirit:configurableElementValues>
+      </spirit:componentInstance>
+      <spirit:componentInstance>
+        <spirit:instanceName>dcsimpledrv_0</spirit:instanceName>
+        <spirit:componentRef spirit:library="user" spirit:name="dcsimpledrv" spirit:vendor="pikron.com" spirit:version="1.0"/>
+        <spirit:configurableElementValues>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_dcsimpledrv_0_0</spirit:configurableElementValue>
+        </spirit:configurableElementValues>
+      </spirit:componentInstance>
+      <spirit:componentInstance>
+        <spirit:instanceName>dcsimpledrv_1</spirit:instanceName>
+        <spirit:componentRef spirit:library="user" spirit:name="dcsimpledrv" spirit:vendor="pikron.com" spirit:version="1.0"/>
+        <spirit:configurableElementValues>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_dcsimpledrv_1_0</spirit:configurableElementValue>
+        </spirit:configurableElementValues>
+      </spirit:componentInstance>
     </spirit:componentInstances>
     <spirit:interconnections>
       <spirit:interconnection>
@@ -635,6 +694,16 @@
         <spirit:activeInterface spirit:busRef="M00_AXI" spirit:componentRef="display_16bit_cmd_data_bus_0"/>
         <spirit:activeInterface spirit:busRef="S02_AXI" spirit:componentRef="axi_mem_intercon"/>
       </spirit:interconnection>
+      <spirit:interconnection>
+        <spirit:name>processing_system7_0_axi_periph_M02_AXI</spirit:name>
+        <spirit:activeInterface spirit:busRef="M02_AXI" spirit:componentRef="processing_system7_0_axi_periph"/>
+        <spirit:activeInterface spirit:busRef="S00_AXI" spirit:componentRef="dcsimpledrv_0"/>
+      </spirit:interconnection>
+      <spirit:interconnection>
+        <spirit:name>processing_system7_0_axi_periph_M03_AXI</spirit:name>
+        <spirit:activeInterface spirit:busRef="M03_AXI" spirit:componentRef="processing_system7_0_axi_periph"/>
+        <spirit:activeInterface spirit:busRef="S00_AXI" spirit:componentRef="dcsimpledrv_1"/>
+      </spirit:interconnection>
     </spirit:interconnections>
     <spirit:adHocConnections>
       <spirit:adHocConnection>
@@ -651,6 +720,8 @@
         <spirit:internalPortReference spirit:componentRef="audio_single_pwm_0" spirit:portRef="m00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="s00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="m00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="s00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="s00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="ACLK"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="S00_ACLK"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M00_ACLK"/>
@@ -682,6 +753,8 @@
         <spirit:internalPortReference spirit:componentRef="audio_single_pwm_0" spirit:portRef="m00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="m00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="s00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="S00_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M00_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M01_ARESETN"/>
@@ -820,6 +893,116 @@
         <spirit:name>display_16bit_cmd_data_bus_0_lcd_cs_n</spirit:name>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="lcd_cs_n"/>
         <spirit:externalPortReference spirit:portRef="LCD_CS"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>Net2</spirit:name>
+        <spirit:externalPortReference spirit:portRef="FPGA_IO_A"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="FPGA_IO_A"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>Net3</spirit:name>
+        <spirit:externalPortReference spirit:portRef="FPGA_IO_B"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="FPGA_IO_B"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>Net4</spirit:name>
+        <spirit:externalPortReference spirit:portRef="FPGA_IO_C"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="FPGA_IO_C"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC1_A</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC1_A"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_A"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC1_B</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC1_B"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_B"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC1_IRQ</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC1_IRQ"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_IRQ"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_PWM_A</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="PWM_A"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="PWM1_A"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_PWM_B</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="PWM_B"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="PWM1_B"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_PWM_A</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="PWM_A"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="PWM2_A"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_PWM_B</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="PWM_B"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="PWM2_B"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC2_A</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC2_A"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_A"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC2_B</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC2_B"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_B"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_to_pmod12_pins_0_IRC2_IRQ</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_to_pmod12_pins_0" spirit:portRef="IRC2_IRQ"/>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_IRQ"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_IRC_A_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_A_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In0"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_IRC_B_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_B_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In1"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_IRC_IRQ_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_IRQ_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In2"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_0_IRC_CHG_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_0" spirit:portRef="IRC_CHG_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In3"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_IRC_A_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_A_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In4"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_IRC_B_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_B_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In5"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_IRC_IRQ_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_IRQ_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In6"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>dcsimpledrv_1_IRC_CHG_MON</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="dcsimpledrv_1" spirit:portRef="IRC_CHG_MON"/>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="In7"/>
+      </spirit:adHocConnection>
+      <spirit:adHocConnection>
+        <spirit:name>xlconcat_1_dout</spirit:name>
+        <spirit:internalPortReference spirit:componentRef="xlconcat_1" spirit:portRef="dout"/>
+        <spirit:internalPortReference spirit:componentRef="canbench_cc_gpio_0" spirit:portRef="SW"/>
       </spirit:adHocConnection>
     </spirit:adHocConnections>
     <spirit:hierConnections>
@@ -1533,7 +1716,7 @@
         <spirit:instanceName>auto_pc</spirit:instanceName>
         <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
         <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_6</spirit:configurableElementValue>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_1</spirit:configurableElementValue>
           <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
           <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI3</spirit:configurableElementValue>
         </spirit:configurableElementValues>
@@ -3236,36 +3419,11 @@
     <spirit:library>BlockDiagram/top_imp/processing_system7_0_axi_periph_imp</spirit:library>
     <spirit:name>m06_couplers_imp</spirit:name>
     <spirit:version>1.00.a</spirit:version>
-    <spirit:componentInstances>
-      <spirit:componentInstance>
-        <spirit:instanceName>auto_pc</spirit:instanceName>
-        <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
-        <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
-        </spirit:configurableElementValues>
-      </spirit:componentInstance>
-    </spirit:componentInstances>
     <spirit:interconnections/>
-    <spirit:adHocConnections>
-      <spirit:adHocConnection>
-        <spirit:name>S_ACLK_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aclk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>S_ARESETN_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aresetn"/>
-      </spirit:adHocConnection>
-    </spirit:adHocConnections>
+    <spirit:adHocConnections/>
     <spirit:hierConnections>
-      <spirit:hierConnection spirit:interfaceRef="M_AXI/auto_pc_to_m06_couplers">
-        <spirit:activeInterface spirit:busRef="M_AXI" spirit:componentRef="auto_pc"/>
-      </spirit:hierConnection>
-      <spirit:hierConnection spirit:interfaceRef="S_AXI/m06_couplers_to_auto_pc">
-        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="auto_pc"/>
+      <spirit:hierConnection spirit:interfaceRef="M_AXI/m06_couplers_to_m06_couplers">
+        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="./m06_couplers_to_m06_couplers"/>
       </spirit:hierConnection>
     </spirit:hierConnections>
   </spirit:design>
@@ -3451,36 +3609,11 @@
     <spirit:library>BlockDiagram/top_imp/processing_system7_0_axi_periph_imp</spirit:library>
     <spirit:name>m05_couplers_imp</spirit:name>
     <spirit:version>1.00.a</spirit:version>
-    <spirit:componentInstances>
-      <spirit:componentInstance>
-        <spirit:instanceName>auto_pc</spirit:instanceName>
-        <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
-        <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_3</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
-        </spirit:configurableElementValues>
-      </spirit:componentInstance>
-    </spirit:componentInstances>
     <spirit:interconnections/>
-    <spirit:adHocConnections>
-      <spirit:adHocConnection>
-        <spirit:name>S_ACLK_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aclk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>S_ARESETN_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aresetn"/>
-      </spirit:adHocConnection>
-    </spirit:adHocConnections>
+    <spirit:adHocConnections/>
     <spirit:hierConnections>
-      <spirit:hierConnection spirit:interfaceRef="M_AXI/auto_pc_to_m05_couplers">
-        <spirit:activeInterface spirit:busRef="M_AXI" spirit:componentRef="auto_pc"/>
-      </spirit:hierConnection>
-      <spirit:hierConnection spirit:interfaceRef="S_AXI/m05_couplers_to_auto_pc">
-        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="auto_pc"/>
+      <spirit:hierConnection spirit:interfaceRef="M_AXI/m05_couplers_to_m05_couplers">
+        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="./m05_couplers_to_m05_couplers"/>
       </spirit:hierConnection>
     </spirit:hierConnections>
   </spirit:design>
@@ -3666,36 +3799,11 @@
     <spirit:library>BlockDiagram/top_imp/processing_system7_0_axi_periph_imp</spirit:library>
     <spirit:name>m04_couplers_imp</spirit:name>
     <spirit:version>1.00.a</spirit:version>
-    <spirit:componentInstances>
-      <spirit:componentInstance>
-        <spirit:instanceName>auto_pc</spirit:instanceName>
-        <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
-        <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_2</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
-        </spirit:configurableElementValues>
-      </spirit:componentInstance>
-    </spirit:componentInstances>
     <spirit:interconnections/>
-    <spirit:adHocConnections>
-      <spirit:adHocConnection>
-        <spirit:name>S_ACLK_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aclk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>S_ARESETN_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aresetn"/>
-      </spirit:adHocConnection>
-    </spirit:adHocConnections>
+    <spirit:adHocConnections/>
     <spirit:hierConnections>
-      <spirit:hierConnection spirit:interfaceRef="M_AXI/auto_pc_to_m04_couplers">
-        <spirit:activeInterface spirit:busRef="M_AXI" spirit:componentRef="auto_pc"/>
-      </spirit:hierConnection>
-      <spirit:hierConnection spirit:interfaceRef="S_AXI/m04_couplers_to_auto_pc">
-        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="auto_pc"/>
+      <spirit:hierConnection spirit:interfaceRef="M_AXI/m04_couplers_to_m04_couplers">
+        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="./m04_couplers_to_m04_couplers"/>
       </spirit:hierConnection>
     </spirit:hierConnections>
   </spirit:design>
@@ -4261,36 +4369,11 @@
     <spirit:library>BlockDiagram/top_imp/processing_system7_0_axi_periph_imp</spirit:library>
     <spirit:name>m01_couplers_imp</spirit:name>
     <spirit:version>1.00.a</spirit:version>
-    <spirit:componentInstances>
-      <spirit:componentInstance>
-        <spirit:instanceName>auto_pc</spirit:instanceName>
-        <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
-        <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_1</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
-        </spirit:configurableElementValues>
-      </spirit:componentInstance>
-    </spirit:componentInstances>
     <spirit:interconnections/>
-    <spirit:adHocConnections>
-      <spirit:adHocConnection>
-        <spirit:name>S_ACLK_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aclk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>S_ARESETN_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aresetn"/>
-      </spirit:adHocConnection>
-    </spirit:adHocConnections>
+    <spirit:adHocConnections/>
     <spirit:hierConnections>
-      <spirit:hierConnection spirit:interfaceRef="M_AXI/auto_pc_to_m01_couplers">
-        <spirit:activeInterface spirit:busRef="M_AXI" spirit:componentRef="auto_pc"/>
-      </spirit:hierConnection>
-      <spirit:hierConnection spirit:interfaceRef="S_AXI/m01_couplers_to_auto_pc">
-        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="auto_pc"/>
+      <spirit:hierConnection spirit:interfaceRef="M_AXI/m01_couplers_to_m01_couplers">
+        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="./m01_couplers_to_m01_couplers"/>
       </spirit:hierConnection>
     </spirit:hierConnections>
   </spirit:design>
@@ -4476,36 +4559,11 @@
     <spirit:library>BlockDiagram/top_imp/processing_system7_0_axi_periph_imp</spirit:library>
     <spirit:name>m00_couplers_imp</spirit:name>
     <spirit:version>1.00.a</spirit:version>
-    <spirit:componentInstances>
-      <spirit:componentInstance>
-        <spirit:instanceName>auto_pc</spirit:instanceName>
-        <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
-        <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_0</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI4</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
-        </spirit:configurableElementValues>
-      </spirit:componentInstance>
-    </spirit:componentInstances>
     <spirit:interconnections/>
-    <spirit:adHocConnections>
-      <spirit:adHocConnection>
-        <spirit:name>S_ACLK_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aclk"/>
-      </spirit:adHocConnection>
-      <spirit:adHocConnection>
-        <spirit:name>S_ARESETN_1</spirit:name>
-        <spirit:externalPortReference spirit:portRef="S_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="auto_pc" spirit:portRef="aresetn"/>
-      </spirit:adHocConnection>
-    </spirit:adHocConnections>
+    <spirit:adHocConnections/>
     <spirit:hierConnections>
-      <spirit:hierConnection spirit:interfaceRef="M_AXI/auto_pc_to_m00_couplers">
-        <spirit:activeInterface spirit:busRef="M_AXI" spirit:componentRef="auto_pc"/>
-      </spirit:hierConnection>
-      <spirit:hierConnection spirit:interfaceRef="S_AXI/m00_couplers_to_auto_pc">
-        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="auto_pc"/>
+      <spirit:hierConnection spirit:interfaceRef="M_AXI/m00_couplers_to_m00_couplers">
+        <spirit:activeInterface spirit:busRef="S_AXI" spirit:componentRef="./m00_couplers_to_m00_couplers"/>
       </spirit:hierConnection>
     </spirit:hierConnections>
   </spirit:design>
@@ -4696,9 +4754,9 @@
         <spirit:instanceName>auto_pc</spirit:instanceName>
         <spirit:componentRef spirit:library="ip" spirit:name="axi_protocol_converter" spirit:vendor="xilinx.com" spirit:version="2.1"/>
         <spirit:configurableElementValues>
-          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_5</spirit:configurableElementValue>
+          <spirit:configurableElementValue spirit:referenceId="bd:xciName">top_auto_pc_0</spirit:configurableElementValue>
           <spirit:configurableElementValue spirit:referenceId="SI_PROTOCOL">AXI3</spirit:configurableElementValue>
-          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4</spirit:configurableElementValue>
+          <spirit:configurableElementValue spirit:referenceId="MI_PROTOCOL">AXI4LITE</spirit:configurableElementValue>
         </spirit:configurableElementValues>
       </spirit:componentInstance>
     </spirit:componentInstances>
@@ -4764,6 +4822,18 @@
             <spirit:name>SEG_display_16bit_cmd_data_bus_0_S00_AXI_reg</spirit:name>
             <spirit:displayName>/display_16bit_cmd_data_bus_0/S00_AXI/S00_AXI_reg</spirit:displayName>
             <spirit:addressOffset>0x43C00000</spirit:addressOffset>
+            <spirit:range>64K</spirit:range>
+          </spirit:segment>
+          <spirit:segment>
+            <spirit:name>SEG_dcsimpledrv_0_S00_AXI_reg</spirit:name>
+            <spirit:displayName>/dcsimpledrv_0/S00_AXI/S00_AXI_reg</spirit:displayName>
+            <spirit:addressOffset>0x43C20000</spirit:addressOffset>
+            <spirit:range>64K</spirit:range>
+          </spirit:segment>
+          <spirit:segment>
+            <spirit:name>SEG_dcsimpledrv_1_S00_AXI_reg</spirit:name>
+            <spirit:displayName>/dcsimpledrv_1/S00_AXI/S00_AXI_reg</spirit:displayName>
+            <spirit:addressOffset>0x43C30000</spirit:addressOffset>
             <spirit:range>64K</spirit:range>
           </spirit:segment>
         </spirit:segments>
