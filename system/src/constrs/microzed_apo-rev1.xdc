@@ -93,7 +93,7 @@ set_property PACKAGE_PIN P15 [get_ports {FPGA_IO_B[27]}]; # PMOD2[2] JX1_LVDS_23
 set_property PACKAGE_PIN P16 [get_ports {FPGA_IO_B[28]}]; # PMOD2[3] JX1_LVDS_23_N (34)
 
 set_property PACKAGE_PIN W18 [get_ports {FPGA_IO_C[31]}]; # PMOD2[0] JX1_LVDS_21_P (34)
-set_property PACKAGE_PIN W19 [get_ports {FPGA_IO_C[32]}]; # PMOD2[2] JX1_LVDS_21_N (34)
+set_property PACKAGE_PIN W19 [get_ports {FPGA_IO_C[32]}]; # PMOD2[1] JX1_LVDS_21_N (34)
 set_property PACKAGE_PIN T17 [get_ports {FPGA_IO_C[33]}]; # PMOD2[4] JX1_LVDS_19_P (34)
 set_property PACKAGE_PIN R18 [get_ports {FPGA_IO_C[34]}]; # PMOD2[5] JX1_LVDS_19_N (34)
 set_property PACKAGE_PIN V16 [get_ports {FPGA_IO_C[35]}]; # PMOD2[6] JX1_LVDS_17_P (34)
