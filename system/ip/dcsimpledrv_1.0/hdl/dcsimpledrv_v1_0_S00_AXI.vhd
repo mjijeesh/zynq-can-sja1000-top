@@ -120,8 +120,10 @@ architecture arch_imp of dcsimpledrv_v1_0_S00_AXI is
 	--------------------------------------------------
 	---- Number of Slave Registers 8
 	signal slv_reg0	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0); -- CR
+	signal slv_reg0_wmask: std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 	signal slv_reg1	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0); -- STAT
 	signal slv_reg2	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0); -- PWM_PER
+	signal slv_reg2_wmask: std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 	signal slv_reg3	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0); -- PWM_DUTY
 	signal slv_reg4	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0); -- IRC_POS
 	signal slv_reg5	:std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
@@ -220,6 +222,7 @@ begin
 
 	process (S_AXI_ACLK)
 	variable loc_addr :std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
+	variable wdata_masked : std_logic_vector(C_S_AXI_DATA_WIDTH-1 downto 0);
 	begin
 	  if rising_edge(S_AXI_ACLK) then
 	    if S_AXI_ARESETN = '0' then
@@ -236,11 +239,12 @@ begin
 	      if (slv_reg_wren = '1') then
 	        case loc_addr is
 	          when b"000" =>
+	            wdata_masked := S_AXI_WDATA and slv_reg0_wmask;
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
 	                -- Respective byte enables are asserted as per write strobes
 	                -- slave registor 0
-	                slv_reg0(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
+	                slv_reg0(byte_index*8+7 downto byte_index*8) <= wdata_masked(byte_index*8+7 downto byte_index*8);
 	              end if;
 	            end loop;
 	          -- when b"001" =>  -- Read-Only
@@ -252,11 +256,12 @@ begin
 	          --    end if;
 	          --  end loop;
 	          when b"010" =>
+	            wdata_masked := S_AXI_WDATA and slv_reg2_wmask;
 	            for byte_index in 0 to (C_S_AXI_DATA_WIDTH/8-1) loop
 	              if ( S_AXI_WSTRB(byte_index) = '1' ) then
 	                -- Respective byte enables are asserted as per write strobes
 	                -- slave registor 2
-	                slv_reg2(byte_index*8+7 downto byte_index*8) <= S_AXI_WDATA(byte_index*8+7 downto byte_index*8);
+	                slv_reg2(byte_index*8+7 downto byte_index*8) <= wdata_masked(byte_index*8+7 downto byte_index*8);
 	              end if;
 	            end loop;
 	          when b"011" =>
@@ -442,16 +447,26 @@ begin
 
 	-- Add user logic here
 
-    irc_reset <= slv_reg0(8);
+	-- CR
+	irc_reset <= slv_reg0(8);
     pwm_direct_a <= slv_reg0(4);
     pwm_direct_b <= slv_reg0(5);
     pwm_enable   <= slv_reg0(6);
 
-	slv_reg1 <= (8 => irc_a_mon, 9 => irc_b_mon, 10 => irc_irq_mon, others => '0');
+    slv_reg0_wmask <= x"00000170";
 
+    -- STAT
+    slv_reg1 <= (8 => irc_a_mon, 9 => irc_b_mon, 10 => irc_irq_mon, others => '0');
+
+    -- PWM_PER
     pwm_period  <= slv_reg2;
+
+    slv_reg2_wmask <= x"3fffffff";
+
+    -- PWM_DUTY
     pwm_duty    <= slv_reg3;
 
+    -- IRC_POS
     slv_reg4 <= irc_pos;
 	-- User logic ends
 
