@@ -123,6 +123,20 @@ architecture arch_imp of dcsimpledrv_v1_0 is
         );
     end component;
 
+    component bidir_pwm is
+        generic (
+        pwm_width: integer := 30
+        );
+        port (
+        clock: in std_logic;
+        reset: in std_logic;
+        pwm_period: in std_logic_vector (pwm_width - 1 downto 0);
+        pwm_duty: in std_logic_vector (pwm_width - 1 downto 0);
+        dir_a, dir_b: in std_logic;
+        pwm_a, pwm_b: out std_logic
+        );
+    end component;
+
     constant irc_bits_n:  natural := 32;
 
     signal irc_pos_act: std_logic_vector(irc_bits_n-1 downto 0);
@@ -143,6 +157,9 @@ architecture arch_imp of dcsimpledrv_v1_0 is
 
     signal pwm_period : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
     signal pwm_duty   : std_logic_vector(C_S00_AXI_DATA_WIDTH-1 downto 0);
+    signal pwm_reset_rq : std_logic;
+    signal pwm_a_gen : std_logic;
+    signal pwm_b_gen : std_logic;
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
@@ -229,13 +246,30 @@ qcounter_nbit_inst:     qcounter_nbit
         ab_error => open
     );
 
+bidir_pwm_inst: bidir_pwm
+    generic map (
+        pwm_width => 30
+    )
+    port map(
+        clock => fsm_clk,
+        reset => pwm_reset_rq, 
+        pwm_period => pwm_period(29 downto 0),
+        pwm_duty => pwm_duty(29 downto 0),
+        dir_a => pwm_duty(30),
+        dir_b => pwm_duty(31),
+        pwm_a => pwm_a_gen,
+        pwm_b => pwm_b_gen
+    );
+
     fsm_clk <= s00_axi_aclk;
     fsm_rst <= not s00_axi_aresetn;
 
     irc_reset_rq <= irc_reset_bit or fsm_rst; 
 
-    PWM_A          <= pwm_direct_a;
-    PWM_B          <= pwm_direct_b;
+    pwm_reset_rq <= not pwm_enable or fsm_rst;
+
+    PWM_A          <= (pwm_direct_a and not pwm_enable) or pwm_a_gen;
+    PWM_B          <= (pwm_direct_b and not pwm_enable) or pwm_b_gen;
 
     IRC_A_MON      <= irc_a_dff3;
     IRC_B_MON      <= irc_b_dff3;
