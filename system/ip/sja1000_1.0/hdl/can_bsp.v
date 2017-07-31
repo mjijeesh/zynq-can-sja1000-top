@@ -599,6 +599,10 @@ reg           error_capture_code_blocked;
 reg           tx_next;
 reg           first_compare_bit;
 
+`ifdef CAN_FD_TOLERANT
+/* Actual received frame is CAN FD one and needs to be ignored */
+reg           fdf_r;
+`endif
 
 wire    [4:0] error_capture_code_segment;
 wire          error_capture_code_direction;
@@ -748,6 +752,20 @@ assign arbitration_field = rx_id1 | rx_rtr1 | rx_ide | rx_id2 | rx_rtr2;
 
 assign last_bit_of_inter = rx_inter & (bit_cnt[1:0] == 2'd2);
 assign not_first_bit_of_inter = rx_inter & (bit_cnt[1:0] != 2'd0);
+
+
+`ifdef CAN_FD_TOLERANT
+/* Actual received frame is CAN FD one and needs to be ignored */
+always @ (posedge clk)
+begin
+  if(rst | go_rx_idle)
+    fdf_r <= 1'b0;
+  else if(rx_r0 & (~ide))
+    fdf_r <= sample_point &  (sampled_bit);
+  else if(rx_r1 & ide)
+    fdf_r <= sample_point &  (sampled_bit);
+end
+`endif
 
 
 // Rx idle state
@@ -1643,7 +1661,11 @@ begin
   else if (reset_mode)
     tx <= 1'b1;
   else if (tx_point)
+   `ifdef CAN_FD_TOLERANT
+    tx <=#Tp (tx_next | fdf_r);
+   `else
     tx <=#Tp tx_next;
+   `endif
 end
 
 
@@ -1957,7 +1979,11 @@ begin
     rx_err_cnt <=#Tp 9'h0;
   else
     begin
+     `ifdef CAN_FD_TOLERANT
+      if ((~listen_only_mode) & (~transmitter | arbitration_lost) & (~fdf_r))
+     `else
       if ((~listen_only_mode) & (~transmitter | arbitration_lost))
+     `endif
         begin
           if (go_rx_ack_lim & (~go_error_frame) & (~crc_err) & (rx_err_cnt > 9'h0))
             begin

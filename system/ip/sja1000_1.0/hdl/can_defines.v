@@ -117,3 +117,6 @@
 
 /* width of MBIST control bus */
 //`define CAN_MBIST_CTRL_WIDTH 3
+
+/* Uncomment following line to not disrupt other nodes CAN FD communication */
+`define CAN_FD_TOLERANT
