@@ -220,30 +220,6 @@
           </spirit:wire>
         </spirit:port>
         <spirit:port>
-          <spirit:name>CAN1_TXD</spirit:name>
-          <spirit:wire>
-            <spirit:direction>out</spirit:direction>
-          </spirit:wire>
-        </spirit:port>
-        <spirit:port>
-          <spirit:name>CAN2_TXD</spirit:name>
-          <spirit:wire>
-            <spirit:direction>out</spirit:direction>
-          </spirit:wire>
-        </spirit:port>
-        <spirit:port>
-          <spirit:name>CAN1_RXD</spirit:name>
-          <spirit:wire>
-            <spirit:direction>in</spirit:direction>
-          </spirit:wire>
-        </spirit:port>
-        <spirit:port>
-          <spirit:name>CAN2_RXD</spirit:name>
-          <spirit:wire>
-            <spirit:direction>in</spirit:direction>
-          </spirit:wire>
-        </spirit:port>
-        <spirit:port>
           <spirit:name>LCD_D</spirit:name>
           <spirit:wire>
             <spirit:direction>inout</spirit:direction>
@@ -281,6 +257,30 @@
           <spirit:name>LCD_CS</spirit:name>
           <spirit:wire>
             <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>CAN2_TXD</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>CAN2_RXD</spirit:name>
+          <spirit:wire>
+            <spirit:direction>in</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>CAN1_TXD</spirit:name>
+          <spirit:wire>
+            <spirit:direction>out</spirit:direction>
+          </spirit:wire>
+        </spirit:port>
+        <spirit:port>
+          <spirit:name>CAN1_RXD</spirit:name>
+          <spirit:wire>
+            <spirit:direction>in</spirit:direction>
           </spirit:wire>
         </spirit:port>
         <spirit:port>
@@ -737,6 +737,14 @@
         <spirit:internalPortReference spirit:componentRef="audio_single_pwm_0" spirit:portRef="m00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="s00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="m00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="s00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="s00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="can_clk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="can_clk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="s00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="s00_axi_aclk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="can_clk"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="can_clk"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="ACLK"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="S00_ACLK"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M00_ACLK"/>
@@ -751,16 +759,8 @@
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M06_ACLK"/>
         <spirit:internalPortReference spirit:componentRef="axi_mem_intercon" spirit:portRef="S01_ACLK"/>
         <spirit:internalPortReference spirit:componentRef="axi_mem_intercon" spirit:portRef="S02_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="s00_axi_aclk"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="s00_axi_aclk"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="can_clk"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="can_clk"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="s00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M07_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="s00_axi_aclk"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M08_ACLK"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="can_clk"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="can_clk"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
         <spirit:name>processing_system7_0_FCLK_RESET0_N</spirit:name>
@@ -778,6 +778,10 @@
         <spirit:internalPortReference spirit:componentRef="audio_single_pwm_0" spirit:portRef="m00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="display_16bit_cmd_data_bus_0" spirit:portRef="m00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="s00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="s00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="s00_axi_aresetn"/>
+        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="S00_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M00_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M01_ARESETN"/>
@@ -790,11 +794,7 @@
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M06_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="axi_mem_intercon" spirit:portRef="S01_ARESETN"/>
         <spirit:internalPortReference spirit:componentRef="axi_mem_intercon" spirit:portRef="S02_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_0" spirit:portRef="s00_axi_aresetn"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_1" spirit:portRef="s00_axi_aresetn"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_2" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M07_ARESETN"/>
-        <spirit:internalPortReference spirit:componentRef="sja1000_3" spirit:portRef="s00_axi_aresetn"/>
         <spirit:internalPortReference spirit:componentRef="processing_system7_0_axi_periph" spirit:portRef="M08_ARESETN"/>
       </spirit:adHocConnection>
       <spirit:adHocConnection>
