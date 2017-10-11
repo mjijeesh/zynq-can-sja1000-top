@@ -249,6 +249,9 @@ module can_bsp
   data_out, // from FIFO only
   fifo_selected, // only forwarded
   
+`ifdef CAN_FD_TOLERANT
+  input  wire       rx_sync_i,                // raw RX for busy detection on fast data rate
+`endif
 
 
   /* Mode register */
@@ -602,6 +605,10 @@ reg           first_compare_bit;
 `ifdef CAN_FD_TOLERANT
 /* Actual received frame is CAN FD one and needs to be ignored */
 reg           fdf_r;
+
+reg           fddombit_r; // Latch dominant-to-recesive transitions in FD mode on fast clock (reset on sample_point)
+reg     [2:0] fddombit_cnt;
+parameter FDDOMBIT_MAX = 3'h4;
 `endif
 
 wire    [4:0] error_capture_code_segment;
@@ -764,6 +771,31 @@ begin
     fdf_r <= sample_point &  (sampled_bit);
   else if(rx_r1 & ide)
     fdf_r <= sample_point &  (sampled_bit);
+end
+
+/* Latch dominant-to-recesive transitions in FD mode on fast clock (reset on sample_point) */
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    fddombit_cnt <= 3'b000;
+  else if (go_rx_idle | rx_sync_i)
+    fddombit_cnt <=#Tp 3'b000;
+  else if (fddombit_cnt < FDDOMBIT_MAX)
+    fddombit_cnt <=#Tp fddombit_cnt + 1'b1;
+  else
+    fddombit_cnt <=#Tp 3'h0;
+end
+
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    fddombit_r <= 1'b0;
+  else if (go_rx_idle)
+    fddombit_r <=#Tp 1'b0;
+  else if (fddombit_cnt == FDDOMBIT_MAX)
+    fddombit_r <=#Tp 1'b1;
+  else if (sample_point)
+    fddombit_r <=#Tp 1'b0;
 end
 `endif
 
@@ -2065,7 +2097,11 @@ begin
     bus_free_cnt <= 4'h0;
   else if (sample_point)
     begin
+      `ifdef CAN_FD_TOLERANT
+      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fddombit_r)
+      `else
       if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10))
+      `endif
         bus_free_cnt <=#Tp bus_free_cnt + 1'b1;
       else
         bus_free_cnt <=#Tp 4'h0;
