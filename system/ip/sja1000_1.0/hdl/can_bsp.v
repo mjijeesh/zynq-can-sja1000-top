@@ -233,6 +233,97 @@
 // synopsys translate_on
 `include "can_defines.v"
 
+`ifdef CAN_FD_TOLERANT
+module can_fd_filter #(
+    parameter integer NSAMPLES = 3
+) (
+  input wire  rst,
+  input wire  clk,
+  input wire  rx_sync_i,
+  output reg  filteredrx_ro,
+  output wire fall_edge_o
+);
+
+parameter integer SHIFT_REG_LEN = NSAMPLES-1;
+
+reg   [SHIFT_REG_LEN-1:0]  shift_r;
+wire shift_allzero;
+wire shift_allone;
+
+/*
+    Report edge detection 1 cycle early, so that unnecessary delay
+    is avoided (can_fd_detect already has the correct 1 cycle delay).
+*/
+assign fall_edge_o = allzero & filteredrx_ro;
+
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    shift_r <= {(SHIFT_REG_LEN){1'b1}};
+  else
+    shift_r <= {shift_r[SHIFT_REG_LEN-2 : 0], rx_sync_i};
+end
+
+assign allzero = ((| shift_r) | rx_sync_i) == 1'b0;
+assign allone =  ((& shift_r) & rx_sync_i) == 1'b1;
+
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    filteredrx_ro <= 1'b1;
+  else if (allone)
+    filteredrx_ro <= 1'b1;
+  else if (allzero)
+    filteredrx_ro <= 1'b0;
+end
+
+/*
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    fall_edge_o <= 1'b0;
+  else
+    fall_edge_o <= allzero & filteredrx_ro;
+end
+*/
+
+endmodule
+//------------------------------------------------------------------------------
+
+module can_fd_detect #(
+    parameter integer NSAMPLES = 3
+) (
+  input wire  rst,
+  input wire  clk,
+
+  /* from can_fd_filter */
+//  input wire  rx_filtered_i,
+  input wire  sample_point_i,
+  input wire  fall_edge_i,
+
+  // Fall-edge in last bit time;
+  // Set on 1-to-0 transition in FD mode (on fast clock), reset on sample_point
+  output reg  falledge_lstbtm_ro
+);
+
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    falledge_lstbtm_ro <= 1'b0;
+  else if (sample_point_i)
+    /* Reset on sample_point has precedence. The register is read in the same cycle,
+       *and* the RX signal itself is read in that cycle, so the dominant state
+       is accounted for anyway.
+    */
+    falledge_lstbtm_ro <= 1'b0;
+  else if (fall_edge_i)
+    falledge_lstbtm_ro <= 1'b1;
+end
+
+endmodule
+`endif
+//------------------------------------------------------------------------------
+
 module can_bsp
 ( 
   clk,
@@ -383,7 +474,7 @@ input   [7:0] data_in;
 output  [7:0] data_out;
 input         fifo_selected;
 `ifdef CAN_FD_TOLERANT
-input rx_sync_i;
+input         rx_sync_i;
 `endif
 
 input         reset_mode;
@@ -609,9 +700,11 @@ reg           first_compare_bit;
 /* Actual received frame is CAN FD one and needs to be ignored */
 reg           fdf_r;
 
-reg           fddombit_r; // Latch dominant-to-recesive transitions in FD mode on fast clock (reset on sample_point)
-reg     [2:0] fddombit_cnt;
-parameter FDDOMBIT_MAX = 3'h4;
+/* Fall edge detected inside preceding bittime */
+wire          fd_falledge_lstbtm;
+
+wire          fd_falledge_raw;
+wire          rx_sync_i;
 `endif
 
 wire    [4:0] error_capture_code_segment;
@@ -621,10 +714,6 @@ wire          bit_de_stuff;
 wire          bit_de_stuff_tx;
 
 wire          rule5;
-
-`ifdef CAN_FD_TOLERANT
-wire          rx_sync_i;
-`endif
 
 /* Rx state machine */
 wire          go_rx_idle;
@@ -767,7 +856,6 @@ assign arbitration_field = rx_id1 | rx_rtr1 | rx_ide | rx_id2 | rx_rtr2;
 assign last_bit_of_inter = rx_inter & (bit_cnt[1:0] == 2'd2);
 assign not_first_bit_of_inter = rx_inter & (bit_cnt[1:0] != 2'd0);
 
-
 `ifdef CAN_FD_TOLERANT
 /* Actual received frame is CAN FD one and needs to be ignored */
 always @ (posedge clk)
@@ -780,30 +868,26 @@ begin
     fdf_r <= sample_point &  (sampled_bit);
 end
 
-/* Latch dominant-to-recesive transitions in FD mode on fast clock (reset on sample_point) */
-always @ (posedge clk or posedge rst)
-begin
-  if (rst)
-    fddombit_cnt <= 3'b000;
-  else if (go_rx_idle | rx_sync_i)
-    fddombit_cnt <=#Tp 3'b000;
-  else if (fddombit_cnt < FDDOMBIT_MAX)
-    fddombit_cnt <=#Tp fddombit_cnt + 1'b1;
-  else
-    fddombit_cnt <=#Tp 3'h0;
-end
+can_fd_filter #(
+  .NSAMPLES(3)
+) i_can_fd_filter (
+  .rst(rst),
+  .clk(clk),
+  .rx_sync_i(rx_sync_i),
+  .rx_filtered_o(fd_filtered_rx),
+  .falledge_o(fd_falledge_raw)
+);
 
-always @ (posedge clk or posedge rst)
-begin
-  if (rst)
-    fddombit_r <= 1'b0;
-  else if (go_rx_idle)
-    fddombit_r <=#Tp 1'b0;
-  else if (fddombit_cnt == FDDOMBIT_MAX)
-    fddombit_r <=#Tp 1'b1;
-  else if (sample_point)
-    fddombit_r <=#Tp 1'b0;
-end
+can_fd_detect i_can_fd_detect (
+  .rst(rst),
+  .clk(clk),
+  /* from can_fd_filter */
+//  .rx_filtered_i(fd_filtered_rx),
+  .falledge_i(fd_falledge_raw),
+  .sample_point_i(sample_point),
+
+  .falledge_lstbtm_ro(fd_falledge_lstbtm)
+);
 `endif
 
 
@@ -2105,7 +2189,7 @@ begin
   else if (sample_point)
     begin
       `ifdef CAN_FD_TOLERANT
-      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fddombit_r)
+      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fd_falledge_lstbtm)
       `else
       if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10))
       `endif
