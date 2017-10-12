@@ -250,7 +250,7 @@ module can_bsp
   fifo_selected, // only forwarded
   
 `ifdef CAN_FD_TOLERANT
-  input  wire       rx_sync_i,                // raw RX for busy detection on fast data rate
+  rx_sync_i,                // raw RX for busy detection on fast data rate
 `endif
 
 
@@ -382,6 +382,9 @@ input   [7:0] addr;
 input   [7:0] data_in;
 output  [7:0] data_out;
 input         fifo_selected;
+`ifdef CAN_FD_TOLERANT
+input rx_sync_i;
+`endif
 
 input         reset_mode;
 input         listen_only_mode;
@@ -618,6 +621,10 @@ wire          bit_de_stuff;
 wire          bit_de_stuff_tx;
 
 wire          rule5;
+
+`ifdef CAN_FD_TOLERANT
+wire          rx_sync_i;
+`endif
 
 /* Rx state machine */
 wire          go_rx_idle;
