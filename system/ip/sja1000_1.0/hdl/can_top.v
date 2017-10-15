@@ -7,7 +7,7 @@
 `include "can_defines.v"
 
 module can_top
-( 
+(
   `ifdef CAN_WISHBONE_IF
     wb_clk_i,
     wb_rst_i,
@@ -149,7 +149,7 @@ can_top_raw #(
     .rd_i(rd),
     .wr_i(wr),
     .port_0_io(port_0),
-    .cs_can_i(cs_can),
+    .cs_can_i(cs_can)
     );
 `endif
-);
+endmodule

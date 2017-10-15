@@ -1,4 +1,4 @@
-module rw_arbiter #()
+module rw_arbiter
 (
 	input wire  S_AXI_ACLK,
 	input wire  S_AXI_ARESETN,
