@@ -2887,7 +2887,45 @@ begin
     $display("*I (%0t) INFO: fd_fall_edge_lstbtm", $time);
   if (can_testbench.i_can_top.i_can_bsp.go_rx_idle)
     $display("*I (%0t) INFO: go_rx_idle", $time);
-  //if (can_testbench.i_can_top.i_can_bsp.bus_free_cnt_en)
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_id1)
+    $display("*I (%0t) INFO: go_rx_id1", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_rtr1)
+    $display("*I (%0t) INFO: go_rx_rtr1", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_ide)
+    $display("*I (%0t) INFO: go_rx_ide", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_id2)
+    $display("*I (%0t) INFO: go_rx_id2", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_rtr2)
+    $display("*I (%0t) INFO: go_rx_rtr2", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_r1)
+    $display("*I (%0t) INFO: go_rx_r1", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_r0)
+    $display("*I (%0t) INFO: go_rx_r0", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_dlc)
+    $display("*I (%0t) INFO: go_rx_dlc", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_data)
+    $display("*I (%0t) INFO: go_rx_data", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_crc)
+    $display("*I (%0t) INFO: go_rx_crc", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_crc_lim)
+    $display("*I (%0t) INFO: go_rx_crc_lim", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_ack)
+    $display("*I (%0t) INFO: go_rx_ack", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_ack_lim)
+    $display("*I (%0t) INFO: go_rx_ack_lim", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_eof)
+    $display("*I (%0t) INFO: go_rx_eof", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_rx_inter)
+    $display("*I (%0t) INFO: go_rx_inter", $time);
+
+  if (can_testbench.i_can_top.i_can_bsp.go_overload_frame)
+    $display("*I (%0t) INFO: go_overload_frame", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_error_frame)
+    $display("*I (%0t) INFO: go_error_frame", $time);
+  if (can_testbench.i_can_top.i_can_bsp.go_tx)
+    $display("*I (%0t) INFO: go_tx", $time);
+
+    //if (can_testbench.i_can_top.i_can_bsp.bus_free_cnt_en)
   //  $display("*I (%0t) INFO: bus_free_cnt_en", $time);
 end
 
@@ -2933,14 +2971,14 @@ task manual_fd_frame_basic_rcv;
     tx_bypassed = 0;    // When this signal is on, tx is not looped back to the rx.
 
 
-    $monitor("tx_i = %b, fdf_r = %b", tx_i, can_testbench.i_can_top.i_can_bsp.fdf_r);
+    $monitor("*I (%0t) MON: tx_i = %b, fdf_r = %b", $time, tx_i, can_testbench.i_can_top.i_can_bsp.fdf_r);
     //repeat (1)
     fork
     begin
       while (1) begin
         @(posedge clk);
         if (~tx_i & can_testbench.i_can_top.i_can_bsp.sample_point)
-          $display("tx_i = %b", tx_i);
+          $display("*I (%0t) tx_i = %b", $time, tx_i);
       end
     end
     begin
