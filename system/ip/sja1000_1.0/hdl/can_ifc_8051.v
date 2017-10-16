@@ -76,6 +76,7 @@ parameter Tp = 1;
   output       reg_rst_o;
   output       reg_cs_o;
   output       reg_we_o;
+  output [7:0] reg_addr_o;
   output [7:0] reg_data_in_o;
   input  [7:0] reg_data_out_i;
 
@@ -92,9 +93,9 @@ parameter Tp = 1;
   reg          rd_i_q;
 
   // Latching address
-  always @ (posedge clk_i or posedge rst)
+  always @ (posedge clk_i or posedge rst_i)
   begin
-    if (rst)
+    if (rst_i)
       addr_latched <= 8'h0;
     else if (ale_i)
       addr_latched <=#Tp port_0_io;
@@ -102,9 +103,9 @@ parameter Tp = 1;
 
 
   // Generating delayed wr_i and rd_i signals
-  always @ (posedge clk_i or posedge rst)
+  always @ (posedge clk_i or posedge rst_i)
   begin
-    if (rst)
+    if (rst_i)
       begin
         wr_i_q <= 1'b0;
         rd_i_q <= 1'b0;
@@ -124,6 +125,6 @@ parameter Tp = 1;
   assign reg_we_o        = wr_i;
   assign reg_addr_o      = addr_latched;
   assign reg_data_in_o   = port_0_io;
-  assign port_0_io       = (cs_can_i & rd_i)? data_out : 8'hz;
+  assign port_0_io       = (cs_can_i & rd_i)? reg_data_out_i : 8'hz;
 
 endmodule

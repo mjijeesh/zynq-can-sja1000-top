@@ -70,8 +70,8 @@ can_top_raw #(
   .reg_re_i(reg_re),
   .reg_data_in(reg_data_in),
   .reg_data_out(reg_data_out),
-  .reg_addr_read_i(reg_addr_read),
-  .reg_addr_write_i(reg_addr_write),
+  .reg_addr_read_i(reg_addr),
+  .reg_addr_write_i(reg_addr),
   .reg_rst_i(reg_rst),
 
   .clk_i(clk_i),
