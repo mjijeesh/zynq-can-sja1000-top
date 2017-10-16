@@ -63,7 +63,7 @@ set proj_dir [get_property directory [current_project]]
 
 # Set project properties
 set obj [get_projects canbench]
-set_property "board_part" "em.avnet.com:microzed_7010:part0:1.0" $obj
+set_property "board_part" "em.avnet.com:microzed_7010:part0:1.1" $obj
 set_property "default_lib" "xil_defaultlib" $obj
 set_property "sim.ip.auto_export_scripts" "1" $obj
 set_property "simulator_language" "Mixed" $obj
@@ -142,10 +142,10 @@ set_property "xelab.unifast" "" $obj
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
-  create_run -name synth_1 -part xc7z010clg400-1 -flow {Vivado Synthesis 2016} -strategy "Vivado Synthesis Defaults" -constrset constrs_1
+  create_run -name synth_1 -part xc7z010clg400-1 -flow {Vivado Synthesis 2017} -strategy "Vivado Synthesis Defaults" -constrset constrs_1
 } else {
   set_property strategy "Vivado Synthesis Defaults" [get_runs synth_1]
-  set_property flow "Vivado Synthesis 2016" [get_runs synth_1]
+  set_property flow "Vivado Synthesis 2017" [get_runs synth_1]
 }
 set obj [get_runs synth_1]
 set_property "part" "xc7z010clg400-1" $obj
@@ -155,10 +155,10 @@ current_run -synthesis [get_runs synth_1]
 
 # Create 'impl_1' run (if not found)
 if {[string equal [get_runs -quiet impl_1] ""]} {
-  create_run -name impl_1 -part xc7z010clg400-1 -flow {Vivado Implementation 2016} -strategy "Vivado Implementation Defaults" -constrset constrs_1 -parent_run synth_1
+  create_run -name impl_1 -part xc7z010clg400-1 -flow {Vivado Implementation 2017} -strategy "Vivado Implementation Defaults" -constrset constrs_1 -parent_run synth_1
 } else {
   set_property strategy "Vivado Implementation Defaults" [get_runs impl_1]
-  set_property flow "Vivado Implementation 2016" [get_runs impl_1]
+  set_property flow "Vivado Implementation 2017" [get_runs impl_1]
 }
 set obj [get_runs impl_1]
 set_property "part" "xc7z010clg400-1" $obj
@@ -189,6 +189,6 @@ current_run -implementation [get_runs impl_1]
 
 check_ip_cache -import_from_project -use_project_cache
 
-#set_property STEPS.WRITE_BITSTREAM.TCL.POST $origin_dir/script/dist.tcl [get_runs impl_1]
+#set_property STEPS.WRITE_BITSTREAM.TCL.POST $origin_dir/dist.tcl [get_runs impl_1]
 
 puts "INFO: Project created:canbench"

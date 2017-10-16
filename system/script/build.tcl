@@ -1,4 +1,4 @@
-set jobs 4
+set jobs 8
 
 open_project ../project/canbench.xpr
 reset_run synth_1
@@ -10,12 +10,13 @@ generate_target all $obj
 export_ip_user_files -of_objects $obj -no_script -force -quiet
 
 update_compile_order -fileset sources_1
+upgrade_ip [get_ips]
 
 #foreach ip [get_ips] {
 #	create_ip_run $ip
 #}
-#launch_run -jobs 4 {top_rst_processing_system7_0_100M_0_synth_1 top_processing_system7_0_1_synth_1 top_can_merge_0_1_synth_1}
-#launch_run -jobs 4 [get_ips]
+#launch_run -jobs $jobs {top_rst_processing_system7_0_100M_0_synth_1 top_processing_system7_0_1_synth_1 top_can_merge_0_1_synth_1}
+#launch_run -jobs $jobs [get_ips]
 #export_simulation -of_objects $obj -directory ../project/canbench.ip_user_files/sim_scripts -force -quiet
 
 launch_runs synth_1 -jobs $jobs
