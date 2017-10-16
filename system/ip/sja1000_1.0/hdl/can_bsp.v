@@ -303,21 +303,21 @@ module can_fd_detect #(
 
   // Fall-edge in last bit time;
   // Set on 1-to-0 transition in FD mode (on fast clock), reset on sample_point
-  output reg  falledge_lstbtm_ro
+  output reg  fall_edge_lstbtm_ro
 );
 
 always @ (posedge clk or posedge rst)
 begin
   if (rst)
-    falledge_lstbtm_ro <= 1'b0;
+    fall_edge_lstbtm_ro <= 1'b0;
   else if (sample_point_i)
     /* Reset on sample_point has precedence. The register is read in the same cycle,
        *and* the RX signal itself is read in that cycle, so the dominant state
        is accounted for anyway.
     */
-    falledge_lstbtm_ro <= 1'b0;
+    fall_edge_lstbtm_ro <= 1'b0;
   else if (fall_edge_i)
-    falledge_lstbtm_ro <= 1'b1;
+    fall_edge_lstbtm_ro <= 1'b1;
 end
 
 endmodule
@@ -701,9 +701,9 @@ reg           first_compare_bit;
 reg           fdf_r;
 
 /* Fall edge detected inside preceding bittime */
-wire          fd_falledge_lstbtm;
+wire          fd_fall_edge_lstbtm;
 
-wire          fd_falledge_raw;
+wire          fd_fall_edge_raw;
 wire          rx_sync_i;
 `endif
 
@@ -874,8 +874,8 @@ can_fd_filter #(
   .rst(rst),
   .clk(clk),
   .rx_sync_i(rx_sync_i),
-  .rx_filtered_o(fd_filtered_rx),
-  .falledge_o(fd_falledge_raw)
+  //.rx_filtered_o(fd_filtered_rx),
+  .fall_edge_o(fd_fall_edge_raw)
 );
 
 can_fd_detect i_can_fd_detect (
@@ -883,10 +883,10 @@ can_fd_detect i_can_fd_detect (
   .clk(clk),
   /* from can_fd_filter */
 //  .rx_filtered_i(fd_filtered_rx),
-  .falledge_i(fd_falledge_raw),
+  .fall_edge_i(fd_fall_edge_raw),
   .sample_point_i(sample_point),
 
-  .falledge_lstbtm_ro(fd_falledge_lstbtm)
+  .fall_edge_lstbtm_ro(fd_fall_edge_lstbtm)
 );
 `endif
 
@@ -2189,7 +2189,8 @@ begin
   else if (sample_point)
     begin
       `ifdef CAN_FD_TOLERANT
-      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fd_falledge_lstbtm)
+      // TODO: & ~(fdr_r & fd_fall_edge_lstbtm) ?
+      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fd_fall_edge_lstbtm)
       `else
       if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10))
       `endif

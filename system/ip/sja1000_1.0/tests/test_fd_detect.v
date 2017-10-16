@@ -26,7 +26,7 @@ can_fd_detect i_can_fd_detect (
   .clk(clk),
   .sample_point_i(sample_point),
   .fall_edge_i(fall_edge_raw),
-  .falledge_lstbtm_ro(felstbtm)
+  .fall_edge_lstbtm_ro(felstbtm)
 );
 
 initial begin

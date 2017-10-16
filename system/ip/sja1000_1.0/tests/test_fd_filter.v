@@ -4,7 +4,7 @@ reg rst;
 reg clk;
 reg  [31:0] cnt;
 
-wire  fd_falledge_raw;
+wire  fd_fall_edge_raw;
 wire  sample_point;
 wire  rx;
 wire  fdd_rst;
@@ -31,7 +31,7 @@ can_fd_filter #(
   .clk(clk),
   .rx_sync_i(rx),
   .filteredrx_ro(filtered_rx),
-  .fall_edge_o(fd_falledge_raw)
+  .fall_edge_o(fd_fall_edge_raw)
 );
 
 initial begin
@@ -39,7 +39,7 @@ initial begin
     $dumpvars;
     rst = 1'b1;
     clk = 1'b1;
-    #27 rst = 1'b0;
+    #47 rst = 1'b0;
 end
 
 always #5 clk = ~clk;
@@ -60,9 +60,9 @@ begin
 end
 
 wire exp_filtered_rx;
-wire exp_fd_falledge_raw;
+wire exp_fd_fall_edge_raw;
 assign exp_filtered_rx = ev_frx[cnt];
-assign exp_fd_falledge_raw = ev_fe[cnt];
+assign exp_fd_fall_edge_raw = ev_fe[cnt];
 
 always @(posedge clk)
 begin
@@ -70,8 +70,8 @@ begin
       begin
         if (exp_filtered_rx != filtered_rx)
           $display("#%d: filtered_rx: expected %b, got %b", cnt, exp_filtered_rx, filtered_rx);
-        if (exp_fd_falledge_raw != fd_falledge_raw)
-          $display("#%d: fd_falledge_o: expected %b, got %b", cnt, exp_fd_falledge_raw, fd_falledge_raw);
+        if (exp_fd_fall_edge_raw != fd_fall_edge_raw)
+          $display("#%d: fd_fall_edge_o: expected %b, got %b", cnt, exp_fd_fall_edge_raw, fd_fall_edge_raw);
       end
 end
 
