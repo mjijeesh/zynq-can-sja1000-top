@@ -5,7 +5,7 @@
 TFTPROOT := /tftpboot/uzedcan
 
 system_project:
-	cd system/script && vivado -mode batch -nolog -nojournal -source recreate.tcl
+	cd system/script && vivado -mode batch -nolog -nojournal -source recreate.tcl -tclargs --origin_dir `pwd`
 system/system.hdf system/system.bit:
 	cd system/script && vivado -mode batch -nolog -nojournal -source build.tcl
 petalinux/bootscript: FORCE
@@ -13,10 +13,12 @@ petalinux/bootscript: FORCE
 petalinux/images/linux/BOOT.BIN: FORCE
 	$(MAKE) -C petalinux images/linux/BOOT.BIN
 
-.PHONY: dist
-dist: system/system.bit petalinux/bootscript petalinux/images/linux/BOOT.BIN petalinux/images/linux/image.ub petalinux/images/linux/system.dtb
-	$(MAKE) -C petalinux images/linux/image.ub
-	cp -t $(TFTPROOT) $^
+#.PHONY: dist
+#dist:
+#	cd system/script && vivado -mode batch -nolog -nojournal -source dist.tcl
+#dist: system/system.bit petalinux/bootscript petalinux/images/linux/BOOT.BIN petalinux/images/linux/image.ub petalinux/images/linux/system.dtb
+#	$(MAKE) -C petalinux images/linux/image.ub
+#	cp -t $(TFTPROOT) $^
 
 petalinux_config: system/system.hdf
 	$(MAKE) -C petalinux config
