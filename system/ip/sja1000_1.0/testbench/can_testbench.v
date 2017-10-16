@@ -2883,8 +2883,10 @@ always @ (posedge clk)
 begin
   //if (can_testbench.i_can_top.i_can_bsp.fdf_r)
   //  $display("*I (%0t) INFO: fdf_r", $time);
+`ifdef CAN_FD_TOLERANT
   if (can_testbench.i_can_top.i_can_bsp.fd_fall_edge_lstbtm)
     $display("*I (%0t) INFO: fd_fall_edge_lstbtm", $time);
+`endif
   if (can_testbench.i_can_top.i_can_bsp.go_rx_idle)
     $display("*I (%0t) INFO: go_rx_idle", $time);
   if (can_testbench.i_can_top.i_can_bsp.go_rx_id1)
@@ -2971,7 +2973,13 @@ task manual_fd_frame_basic_rcv;
     tx_bypassed = 0;    // When this signal is on, tx is not looped back to the rx.
 
 
-    $monitor("*I (%0t) MON: tx_i = %b, fdf_r = %b", $time, tx_i, can_testbench.i_can_top.i_can_bsp.fdf_r);
+    $monitor("*I (%0t) MON: tx_i = %b, fdf_r = %b", $time, tx_i,
+`ifdef CAN_FD_TOLERANT
+    can_testbench.i_can_top.i_can_bsp.fdf_r
+`else
+    0
+`endif
+);
     //repeat (1)
     fork
     begin
@@ -2998,7 +3006,7 @@ task manual_fd_frame_basic_rcv;
         send_bit(0);  // ID arbi lost
         send_bit(1);  // RTR
         send_bit(0);  // IDE
-        send_bit(1);  // r0 -- FD
+        send_bit(0);  // r0 -- FD
         send_bit(1);  // DLC
         send_bit(1);  // DLC
         send_bit(1);  // DLC
