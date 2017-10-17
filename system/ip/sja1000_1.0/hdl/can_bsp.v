@@ -704,7 +704,10 @@ reg           fdf_r;
 wire          fd_fall_edge_lstbtm;
 
 wire          fd_fall_edge_raw;
-wire          rx_sync_i;
+
+reg           go_rx_skip_fdf; // async
+reg     [2:0] fd_skip_cnt;
+wire          fd_skip_finished;
 `endif
 
 wire    [4:0] error_capture_code_segment;
@@ -803,8 +806,13 @@ wire          overload_flag_over;
 wire    [5:0] limited_tx_cnt_ext;
 wire    [5:0] limited_tx_cnt_std;
 
+`ifdef CAN_FD_TOLERANT
+assign go_rx_idle     =                   sample_point &  sampled_bit & (last_bit_of_inter | fd_skip_finished) | bus_free & (~node_bus_off);
+assign go_rx_id1      =                   sample_point &  (~sampled_bit) & (rx_idle | last_bit_of_inter | fd_skip_finished);
+`else
 assign go_rx_idle     =                   sample_point &  sampled_bit & last_bit_of_inter | bus_free & (~node_bus_off);
 assign go_rx_id1      =                   sample_point &  (~sampled_bit) & (rx_idle | last_bit_of_inter);
+`endif
 assign go_rx_rtr1     = (~bit_de_stuff) & sample_point &  rx_id1  & (bit_cnt[3:0] == 4'd10);
 assign go_rx_ide      = (~bit_de_stuff) & sample_point &  rx_rtr1;
 assign go_rx_id2      = (~bit_de_stuff) & sample_point &  rx_ide  &   sampled_bit;
@@ -837,7 +845,11 @@ assign go_crc_enable  = hard_sync | go_tx;
 assign rst_crc_enable = go_rx_crc;
 
 assign bit_de_stuff_set   = go_rx_id1 & (~go_error_frame);
+`ifdef CAN_FD_TOLERANT
+assign bit_de_stuff_reset = go_rx_ack | go_error_frame | go_overload_frame | go_rx_skip_fdf;
+`else
 assign bit_de_stuff_reset = go_rx_ack | go_error_frame | go_overload_frame;
+`endif
 
 assign remote_rq = ((~ide) & rtr1) | (ide & rtr2);
 assign limited_data_len = (data_len < 4'h8)? data_len : 4'h8;
@@ -857,15 +869,31 @@ assign last_bit_of_inter = rx_inter & (bit_cnt[1:0] == 2'd2);
 assign not_first_bit_of_inter = rx_inter & (bit_cnt[1:0] != 2'd0);
 
 `ifdef CAN_FD_TOLERANT
-/* Actual received frame is CAN FD one and needs to be ignored */
+/*
+    Idea:
+    - after every CAN frame there must be 6 recessive bits for EOF (+3 intermission)
+    - when FD frame is detected, just wait until the 6 recessive bits are found
+*/
+assign fd_skip_finished = fd_skip_cnt == 3'd6;
+
+// asynchronous
+always @(*)
+begin
+  if(rx_r0 & (~ide))
+    go_rx_skip_fdf <= sample_point &  (sampled_bit);
+  else if(rx_r1 & ide)
+    go_rx_skip_fdf <= sample_point &  (sampled_bit);
+  else
+    go_rx_skip_fdf <= 1'b0;
+end
+
+/* Current received frame is CAN FD one and needs to be ignored */
 always @ (posedge clk)
 begin
-  if(rst | go_rx_idle)
+  if (rst | go_rx_idle | go_rx_id1)
     fdf_r <= 1'b0;
-  else if(rx_r0 & (~ide))
-    fdf_r <= sample_point &  (sampled_bit);
-  else if(rx_r1 & ide)
-    fdf_r <= sample_point &  (sampled_bit);
+  else if (go_rx_skip_fdf)
+    fdf_r <= 1'b1;
 end
 
 can_fd_filter #(
@@ -888,6 +916,18 @@ can_fd_detect i_can_fd_detect (
 
   .fall_edge_lstbtm_ro(fd_fall_edge_lstbtm)
 );
+
+always @(posedge clk or posedge rst)
+begin
+  if (rst)
+    fd_skip_cnt <= 3'h0;
+  else if (go_rx_idle | go_rx_id1)
+    fd_skip_cnt <= 3'h0;
+  else if (go_rx_skip_fdf | (sample_point & (~sampled_bit | fd_fall_edge_lstbtm)))
+    fd_skip_cnt <= 3'h0;
+  else if (fdf_r & sample_point & fd_skip_cnt < 3'h6)
+    fd_skip_cnt <= fd_skip_cnt + 1'b1;
+end
 `endif
 
 
@@ -896,7 +936,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_idle <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_id1 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_id1 | go_error_frame)
+`endif
     rx_idle <=#Tp 1'b0;
   else if (go_rx_idle)
     rx_idle <=#Tp 1'b1;
@@ -908,7 +952,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_id1 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_rtr1 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_rtr1 | go_error_frame)
+`endif
     rx_id1 <=#Tp 1'b0;
   else if (go_rx_id1)
     rx_id1 <=#Tp 1'b1;
@@ -920,7 +968,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_rtr1 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_ide | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_ide | go_error_frame)
+`endif
     rx_rtr1 <=#Tp 1'b0;
   else if (go_rx_rtr1)
     rx_rtr1 <=#Tp 1'b1;
@@ -932,7 +984,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_ide <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_r0 | go_rx_id2 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_r0 | go_rx_id2 | go_error_frame)
+`endif
     rx_ide <=#Tp 1'b0;
   else if (go_rx_ide)
     rx_ide <=#Tp 1'b1;
@@ -944,7 +1000,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_id2 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_rtr2 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_rtr2 | go_error_frame)
+`endif
     rx_id2 <=#Tp 1'b0;
   else if (go_rx_id2)
     rx_id2 <=#Tp 1'b1;
@@ -956,7 +1016,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_rtr2 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_r1 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_r1 | go_error_frame)
+`endif
     rx_rtr2 <=#Tp 1'b0;
   else if (go_rx_rtr2)
     rx_rtr2 <=#Tp 1'b1;
@@ -968,7 +1032,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_r1 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_r0 | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_r0 | go_error_frame)
+`endif
     rx_r1 <=#Tp 1'b0;
   else if (go_rx_r1)
     rx_r1 <=#Tp 1'b1;
@@ -980,7 +1048,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_r0 <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_dlc | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_dlc | go_error_frame)
+`endif
     rx_r0 <=#Tp 1'b0;
   else if (go_rx_r0)
     rx_r0 <=#Tp 1'b1;
@@ -992,7 +1064,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_dlc <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_data | go_rx_crc | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_data | go_rx_crc | go_error_frame)
+`endif
     rx_dlc <=#Tp 1'b0;
   else if (go_rx_dlc)
     rx_dlc <=#Tp 1'b1;
@@ -1004,7 +1080,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_data <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_crc | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_crc | go_error_frame)
+`endif
     rx_data <=#Tp 1'b0;
   else if (go_rx_data)
     rx_data <=#Tp 1'b1;
@@ -1016,7 +1096,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_crc <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_crc_lim | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_crc_lim | go_error_frame)
+`endif
     rx_crc <=#Tp 1'b0;
   else if (go_rx_crc)
     rx_crc <=#Tp 1'b1;
@@ -1028,7 +1112,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_crc_lim <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_ack | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_ack | go_error_frame)
+`endif
     rx_crc_lim <=#Tp 1'b0;
   else if (go_rx_crc_lim)
     rx_crc_lim <=#Tp 1'b1;
@@ -1040,7 +1128,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_ack <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_ack_lim | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_ack_lim | go_error_frame)
+`endif
     rx_ack <=#Tp 1'b0;
   else if (go_rx_ack)
     rx_ack <=#Tp 1'b1;
@@ -1052,7 +1144,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_ack_lim <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_eof | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_eof | go_error_frame)
+`endif
     rx_ack_lim <=#Tp 1'b0;
   else if (go_rx_ack_lim)
     rx_ack_lim <=#Tp 1'b1;
@@ -1064,7 +1160,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_eof <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_inter | go_error_frame | go_overload_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_inter | go_error_frame | go_overload_frame)
+`endif
     rx_eof <=#Tp 1'b0;
   else if (go_rx_eof)
     rx_eof <=#Tp 1'b1;
@@ -1077,7 +1177,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     rx_inter <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_idle | go_rx_id1 | go_overload_frame | go_error_frame | go_rx_skip_fdf)
+`else
   else if (go_rx_idle | go_rx_id1 | go_overload_frame | go_error_frame)
+`endif
     rx_inter <=#Tp 1'b0;
   else if (go_rx_inter)
     rx_inter <=#Tp 1'b1;
@@ -1190,7 +1294,11 @@ begin
   if (rst)
     bit_cnt <= 6'd0;
   else if (go_rx_id1 | go_rx_id2 | go_rx_dlc | go_rx_data | go_rx_crc | 
-           go_rx_ack | go_rx_eof | go_rx_inter | go_error_frame | go_overload_frame)
+           go_rx_ack | go_rx_eof | go_rx_inter | go_error_frame | go_overload_frame
+`ifdef CAN_FD_TOLERANT
+           | go_rx_skip_fdf
+`endif
+           )
     bit_cnt <=#Tp 6'd0;
   else if (sample_point & (~bit_de_stuff))
     bit_cnt <=#Tp bit_cnt + 1'b1;
@@ -1204,7 +1312,11 @@ begin
     eof_cnt <= 3'd0;
   else if (sample_point)
     begin
+`ifdef CAN_FD_TOLERANT
+      if (go_rx_inter | go_error_frame | go_overload_frame | go_rx_skip_fdf)
+`else
       if (go_rx_inter | go_error_frame | go_overload_frame)
+`endif
         eof_cnt <=#Tp 3'd0;
       else if (rx_eof)
         eof_cnt <=#Tp eof_cnt + 1'b1;
@@ -1449,8 +1561,12 @@ can_acf i_can_acf
 
   .go_rx_crc_lim(go_rx_crc_lim),
   .go_rx_inter(go_rx_inter),
+`ifdef CAN_FD_TOLERANT
+  .go_error_frame(go_error_frame | go_rx_skip_fdf),
+`else
   .go_error_frame(go_error_frame),
-  
+`endif
+
   .data0(tmp_fifo[0]),
   .data1(tmp_fifo[1]),
   .rtr1(rtr1),
