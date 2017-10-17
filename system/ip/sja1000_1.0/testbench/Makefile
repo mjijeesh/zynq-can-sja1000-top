@@ -1,3 +1,9 @@
+DEFINES :=
+DEFINES := -DCAN_FD_TOLERANT
+
+SRC := orig_src
+#SRC := path_to_unmodified_src
+
 all:
-	iverilog -DCAN_FD_TOLERANT -o test -s can_testbench -I. -I orig_src orig_src/*.v *.v
+	iverilog $(DEFINES) -o test -s can_testbench -I. -I $(SRC) $(SRC)/*.v *.v
 	./test

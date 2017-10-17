@@ -621,7 +621,11 @@ can_bsp i_can_bsp
   .data_out(data_out_fifo),
   .fifo_selected(data_out_fifo_selected),
 
-  /* Mode register */
+`ifdef CAN_FD_TOLERANT
+  .rx_sync_i(rx_sync),
+`endif
+
+/* Mode register */
   .reset_mode(reset_mode),
   .listen_only_mode(listen_only_mode),
   .acceptance_filter_mode(acceptance_filter_mode),
