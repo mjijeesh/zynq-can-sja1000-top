@@ -1417,7 +1417,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     crc_err <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | error_frame_ended | fd_skip_finished)
+`else
   else if (reset_mode | error_frame_ended)
+`endif
     crc_err <=#Tp 1'b0;
   else if (go_rx_ack)
     crc_err <=#Tp crc_in != calculated_crc;
@@ -1436,7 +1440,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     ack_err_latched <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | error_frame_ended | go_overload_frame | fd_skip_finished)
+`else
   else if (reset_mode | error_frame_ended | go_overload_frame)
+`endif
     ack_err_latched <=#Tp 1'b0;
   else if (ack_err)
     ack_err_latched <=#Tp 1'b1;
@@ -1447,7 +1455,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     bit_err_latched <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | error_frame_ended | go_overload_frame | fd_skip_finished)
+`else
   else if (reset_mode | error_frame_ended | go_overload_frame)
+`endif
     bit_err_latched <=#Tp 1'b0;
   else if (bit_err)
     bit_err_latched <=#Tp 1'b1;
@@ -1489,7 +1501,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     stuff_err_latched <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | error_frame_ended | go_overload_frame | fd_skip_finished)
+`else
   else if (reset_mode | error_frame_ended | go_overload_frame)
+`endif
     stuff_err_latched <=#Tp 1'b0;
   else if (stuff_err)
     stuff_err_latched <=#Tp 1'b1;
@@ -1501,7 +1517,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     form_err_latched <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | error_frame_ended | go_overload_frame | fd_skip_finished)
+`else
   else if (reset_mode | error_frame_ended | go_overload_frame)
+`endif
     form_err_latched <=#Tp 1'b0;
   else if (form_err)
     form_err_latched <=#Tp 1'b1;
@@ -1686,7 +1706,11 @@ begin
   if (rst)
     error_frame <= 1'b0;
 //  else if (reset_mode || error_frame_ended || go_overload_frame)
+`ifdef CAN_FD_TOLERANT
+  else if (set_reset_mode || error_frame_ended || go_overload_frame || go_rx_skip_fdf)
+`else
   else if (set_reset_mode || error_frame_ended || go_overload_frame)
+`endif
     error_frame <=#Tp 1'b0;
   else if (go_error_frame)
     error_frame <=#Tp 1'b1;
@@ -1787,7 +1811,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     overload_frame <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (overload_frame_ended | go_error_frame | go_rx_skip_fdf)
+`else
   else if (overload_frame_ended | go_error_frame)
+`endif
     overload_frame <=#Tp 1'b0;
   else if (go_overload_frame)
     overload_frame <=#Tp 1'b1;
@@ -2020,7 +2048,11 @@ begin
 end
 
 
+`ifdef CAN_FD_TOLERANT
+assign tx_successful = transmitter & go_rx_inter & (~go_error_frame) & (~error_frame_ended) & (~overload_frame_ended) & (~arbitration_lost) & (~go_rx_skip_fdf) & (~fdf_r);
+`else
 assign tx_successful = transmitter & go_rx_inter & (~go_error_frame) & (~error_frame_ended) & (~overload_frame_ended) & (~arbitration_lost);
+`endif
 
 
 always @ (posedge clk or posedge rst)
@@ -2035,7 +2067,11 @@ end
 
 
 
+`ifdef CAN_FD_TOLERANT
+assign go_early_tx = (~listen_only_mode) & need_to_tx & (~tx_state) & (~suspend | (susp_cnt == 3'h7)) & sample_point & (~sampled_bit) & (rx_idle | last_bit_of_inter | fd_skip_finished);
+`else
 assign go_early_tx = (~listen_only_mode) & need_to_tx & (~tx_state) & (~suspend | (susp_cnt == 3'h7)) & sample_point & (~sampled_bit) & (rx_idle | last_bit_of_inter);
+`endif
 assign go_tx       = (~listen_only_mode) & need_to_tx & (~tx_state) & (~suspend | (sample_point & (susp_cnt == 3'h7))) & (go_early_tx | rx_idle);
 
 // go_early_tx latched (for proper bit_de_stuff generation)
@@ -2056,7 +2092,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     tx_state <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (reset_mode | go_rx_inter | error_frame | arbitration_lost | go_rx_skip_fdf)
+`else
   else if (reset_mode | go_rx_inter | error_frame | arbitration_lost)
+`endif
     tx_state <=#Tp 1'b0;
   else if (go_tx)
     tx_state <=#Tp 1'b1;
@@ -2117,7 +2157,11 @@ begin
     susp_cnt_en <= 1'b0;
   else if (reset_mode | (sample_point & (susp_cnt == 3'h7)))
     susp_cnt_en <=#Tp 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (suspend & sample_point & (last_bit_of_inter | fd_skip_finished))
+`else
   else if (suspend & sample_point & last_bit_of_inter)
+`endif
     susp_cnt_en <=#Tp 1'b1;
 end
 
@@ -2137,7 +2181,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     finish_msg <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_idle | go_rx_id1 | error_frame | reset_mode | fdf_r)
+`else
   else if (go_rx_idle | go_rx_id1 | error_frame | reset_mode)
+`endif
     finish_msg <=#Tp 1'b0;
   else if (go_rx_crc_lim)
     finish_msg <=#Tp 1'b1;
@@ -2148,7 +2196,11 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     arbitration_lost <= 1'b0;
+`ifdef CAN_FD_TOLERANT
+  else if (go_rx_idle | error_frame_ended | fd_skip_finished)
+`else
   else if (go_rx_idle | error_frame_ended)
+`endif
     arbitration_lost <=#Tp 1'b0;
   else if (transmitter & sample_point & tx & arbitration_field & ~sampled_bit)
     arbitration_lost <=#Tp 1'b1;
