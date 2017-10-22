@@ -880,9 +880,9 @@ assign fd_skip_finished = fd_skip_cnt == 3'd6;
 always @(*)
 begin
   if(rx_r0 & (~ide))
-    go_rx_skip_fdf <= sample_point &  (sampled_bit);
+    go_rx_skip_fdf <= sample_point & sampled_bit & (~bit_de_stuff);
   else if(rx_r1 & ide)
-    go_rx_skip_fdf <= sample_point &  (sampled_bit);
+    go_rx_skip_fdf <= sample_point & sampled_bit & (~bit_de_stuff);
   else
     go_rx_skip_fdf <= 1'b0;
 end
