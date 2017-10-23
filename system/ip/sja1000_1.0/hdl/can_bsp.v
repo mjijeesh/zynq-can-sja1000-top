@@ -2202,7 +2202,12 @@ begin
   else if (go_rx_idle | error_frame_ended)
 `endif
     arbitration_lost <=#Tp 1'b0;
+`ifdef CAN_FD_TOLERANT
+  // TODO: go_rx_skip_fdf or fdf_r or fd_fall_edge_lstbtm ?
+  else if (transmitter & sample_point & tx & arbitration_field & (~sampled_bit | go_rx_skip_fdf))
+`else
   else if (transmitter & sample_point & tx & arbitration_field & ~sampled_bit)
+`endif
     arbitration_lost <=#Tp 1'b1;
 end
 
