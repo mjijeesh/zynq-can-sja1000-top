@@ -265,6 +265,11 @@ output  mbist_so_o;       // bist scan serial out
 input [`CAN_MBIST_CTRL_WIDTH - 1:0] mbist_ctrl_i;       // bist chain shift control
 `endif
 
+`ifdef CAN_FD_TOLERANT
+wire go_rx_skip_fdf;
+wire fdf_r;
+`endif
+
 reg          data_out_fifo_selected;
 
 
@@ -559,10 +564,10 @@ can_btl i_can_btl
   
   /* output from can_bsp module */
   .rx_idle(rx_idle),
-  .rx_inter(rx_inter),
+  .rx_inter(rx_inter | fdf_r),
   .transmitting(transmitting),
   .transmitter(transmitter),
-  .go_rx_inter(go_rx_inter),
+  .go_rx_inter(go_rx_inter | go_rx_skip_fdf),
   .tx_next(tx_next),
 
   .go_overload_frame(go_overload_frame),
@@ -597,6 +602,12 @@ can_bsp i_can_bsp
   .data_in(reg_data_in),
   .data_out(data_out_fifo),
   .fifo_selected(data_out_fifo_selected),
+
+`ifdef CAN_FD_TOLERANT
+  .rx_sync_i(rx_sync),
+  .go_rx_skip_fdf_o(go_rx_skip_fdf),
+  .fdf_o(fdf_r),
+`endif
 
   /* Mode register */
   .reset_mode(reset_mode),

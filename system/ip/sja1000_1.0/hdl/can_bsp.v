@@ -342,6 +342,8 @@ module can_bsp
   
 `ifdef CAN_FD_TOLERANT
   rx_sync_i,                // raw RX for busy detection on fast data rate
+  go_rx_skip_fdf_o,
+  fdf_o,
 `endif
 
 
@@ -475,6 +477,8 @@ output  [7:0] data_out;
 input         fifo_selected;
 `ifdef CAN_FD_TOLERANT
 input         rx_sync_i;
+output        go_rx_skip_fdf_o;
+output        fdf_o;
 `endif
 
 input         reset_mode;
@@ -869,6 +873,9 @@ assign last_bit_of_inter = rx_inter & (bit_cnt[1:0] == 2'd2);
 assign not_first_bit_of_inter = rx_inter & (bit_cnt[1:0] != 2'd0);
 
 `ifdef CAN_FD_TOLERANT
+assign go_rx_skip_fdf_o = go_rx_skip_fdf;
+assign fdf_o = fdf_r;
+
 /*
     Idea:
     - after every CAN frame there must be 6 recessive bits for EOF (+3 intermission)
