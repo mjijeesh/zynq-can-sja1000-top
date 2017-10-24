@@ -594,10 +594,6 @@ can_bsp i_can_bsp
   .tx_point(tx_point),
   .hard_sync(hard_sync),
 
-`ifdef CAN_FD_TOLERANT
-  .rx_sync_i(rx_sync),
-`endif
-
   .addr(addr_read),
   .data_in(reg_data_in),
   .data_out(data_out_fifo),
