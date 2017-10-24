@@ -227,7 +227,7 @@ begin
 //  test_reset_mode;              // test currently switched off
 //  bus_off_test;               // test currently switched off
 //  forced_bus_off;             // test currently switched off
-//  send_frame_basic;           // test currently switched on
+  send_frame_basic;           // test currently switched on
 //  send_frame_extended;        // test currently switched off
 //  self_reception_request;       // test currently switched off
 //  manual_frame_basic;         // test currently switched off
@@ -235,7 +235,9 @@ begin
 //    error_test;
 //    register_test;
 //    bus_off_recovery_test;
-    manual_fd_frame_basic_rcv;
+    //manual_fd_frame_basic_rcv;
+    //send_into_fd_frame;
+//    test_tx_after_fdf;
 
 
 /*
@@ -1411,7 +1413,6 @@ task send_frame_basic;    // CAN IP core sends frames
     write_register(8'd18, 8'h0f); // data byte 7
     write_register(8'd19, 8'hed); // data byte 8
 
-
     // Enable irqs (basic mode)
     write_register(8'd0, 8'h1e);
 
@@ -2322,11 +2323,20 @@ task release_rx_buffer_command;
 endtask
 
 
-task tx_request_command;
+task tx_request_command_impl;
+  input [1:0] msk;
   begin
-    write_register(8'd1, 8'h1);
-    $display("(%0t) Tx requested.", $time);
+    write_register_impl(msk, 8'd1, 8'h1);
+    $display("(%0t) #%h: Tx requested.", $time, msk);
   end
+endtask
+
+task tx_request_command;
+  tx_request_command_impl(2'h1);
+endtask
+
+task tx_request_command2;
+  tx_request_command_impl(2'h2);
 endtask
 
 
@@ -2716,6 +2726,7 @@ end
 
 
 task manual_fd_frame_basic_rcv;
+  integer done;
   begin
     // Switch-on reset mode
     write_register(8'd0, {7'h0, (`CAN_MODE_RESET)});
@@ -2755,10 +2766,10 @@ task manual_fd_frame_basic_rcv;
     0, 0, 0
 `endif
 );
-    //repeat (1)
+    done = 0;
     fork
     begin
-      while (1) begin
+      while (!done) begin
         @(posedge clk);
         if (~tx_i & can_testbench.i_can_top.i_can_bsp.sample_point)
           $display("*I (%0t) tx_i = %b", $time, tx_i);
@@ -2796,7 +2807,8 @@ task manual_fd_frame_basic_rcv;
         send_bit(1);  // ACK DELIM
         send_bits(7, 7'b1111111); // EOF
         send_bits(3, 7'b111); // INTER
-    end // repeat
+        done = 1;
+    end
     join
 
 
@@ -2810,6 +2822,88 @@ task manual_fd_frame_basic_rcv;
     read_receive_buffer;
   end
 endtask   //  test_fdframe
+
+
+
+task send_into_fd_frame;    // CAN IP core sends frames during reception of CAN FD frame
+  begin
+
+    write_register(8'd10, 8'hea); // Writing ID[10:3] = 0xea
+    write_register(8'd11, 8'h28); // Writing ID[2:0] = 0x1, rtr = 0, length = 8
+    write_register(8'd12, 8'h56); // data byte 1
+    write_register(8'd13, 8'h78); // data byte 2
+    write_register(8'd14, 8'h9a); // data byte 3
+    write_register(8'd15, 8'hbc); // data byte 4
+    write_register(8'd16, 8'hde); // data byte 5
+    write_register(8'd17, 8'hf0); // data byte 6
+    write_register(8'd18, 8'h0f); // data byte 7
+    write_register(8'd19, 8'hed); // data byte 8
+
+
+    // Enable irqs (basic mode)
+    write_register(8'd0, 8'h1e);
+
+
+
+    fork
+
+      begin
+        #1100;
+        $display("\n\nStart receiving data from CAN bus");
+        receive_frame(0, 0, {26'h00000e8, 3'h1}, 4'h1, 15'h30bb); // mode, rtr, id, length, crc
+        receive_frame(0, 0, {26'h00000e8, 3'h1}, 4'h2, 15'h2da1); // mode, rtr, id, length, crc
+        receive_frame(0, 0, {26'h00000ee, 3'h1}, 4'h0, 15'h6cea); // mode, rtr, id, length, crc
+        receive_frame(0, 0, {26'h00000e8, 3'h1}, 4'h2, 15'h2da1); // mode, rtr, id, length, crc
+        receive_frame(0, 0, {26'h00000ee, 3'h1}, 4'h2, 15'h7b4a); // mode, rtr, id, length, crc
+        receive_frame(0, 0, {26'h00000ee, 3'h1}, 4'h1, 15'h00c5); // mode, rtr, id, length, crc
+      end
+
+      begin
+        tx_request_command;
+      end
+
+      begin
+        wait (can_testbench.i_can_top.i_can_bsp.go_tx)        // waiting for tx to start
+        wait (~can_testbench.i_can_top.i_can_bsp.need_to_tx)  // waiting for tx to finish
+        tx_request_command;                                   // start another tx
+      end
+
+      begin
+        // Transmitting acknowledge (for first packet)
+        wait (can_testbench.i_can_top.i_can_bsp.tx_state & can_testbench.i_can_top.i_can_bsp.rx_ack & can_testbench.i_can_top.i_can_bsp.tx_point);
+        #1 rx = 0;
+        wait (can_testbench.i_can_top.i_can_bsp.rx_ack_lim & can_testbench.i_can_top.i_can_bsp.tx_point);
+        #1 rx = 1;
+
+        // Transmitting acknowledge (for second packet)
+        wait (can_testbench.i_can_top.i_can_bsp.tx_state & can_testbench.i_can_top.i_can_bsp.rx_ack & can_testbench.i_can_top.i_can_bsp.tx_point);
+        #1 rx = 0;
+        wait (can_testbench.i_can_top.i_can_bsp.rx_ack_lim & can_testbench.i_can_top.i_can_bsp.tx_point);
+        #1 rx = 1;
+      end
+
+
+    join
+
+    read_receive_buffer;
+    release_rx_buffer_command;
+    release_rx_buffer_command;
+    read_receive_buffer;
+    release_rx_buffer_command;
+    read_receive_buffer;
+
+    #200000;
+
+    read_receive_buffer;
+
+    // Read irq register
+    read_register(8'd3, tmp_data);
+    #1000;
+
+  end
+endtask   // send_frame_basic
+
+
 
 endmodule
 

@@ -247,8 +247,8 @@ module can_fd_filter #(
 parameter integer SHIFT_REG_LEN = NSAMPLES-1;
 
 reg   [SHIFT_REG_LEN-1:0]  shift_r;
-wire shift_allzero;
-wire shift_allone;
+wire allzero;
+wire allone;
 
 /*
     Report edge detection 1 cycle early, so that unnecessary delay
@@ -290,9 +290,7 @@ end
 endmodule
 //------------------------------------------------------------------------------
 
-module can_fd_detect #(
-    parameter integer NSAMPLES = 3
-) (
+module can_fd_detect (
   input wire  rst,
   input wire  clk,
 
@@ -878,10 +876,11 @@ assign fdf_o = fdf_r;
 
 /*
     Idea:
-    - after every CAN frame there must be 6 recessive bits for EOF (+3 intermission)
-    - when FD frame is detected, just wait until the 6 recessive bits are found
+    - after every CAN DATA  frame there must be 7 recessive bits for EOF (+3 intermission)
+    - after every CAN ERROR frame there must be 8 recessive bits as delimiter (+3 intermission)
+    - when FD frame is detected, just wait until the X recessive bits are found
 */
-assign fd_skip_finished = fd_skip_cnt == 3'd6;
+assign fd_skip_finished = fd_skip_cnt >= (errframe_during_fdf ? 4'd11 : 4'd10);
 
 // asynchronous
 always @(*)
@@ -897,10 +896,42 @@ end
 /* Current received frame is CAN FD one and needs to be ignored */
 always @ (posedge clk)
 begin
-  if (rst | go_rx_idle | go_rx_id1)
+  /*
+     error_frame: When we are transmitting and fdf_r is errorneously detected as 1 (bus error), we should send error
+       TODO: ensure & test that the error frame is sent in this case (now it probably isn't)
+     error (& overload):
+       When EF/OF is sent during the FD frame, we expect 8 bits delimiter + 3 intermission
+       *as opposed to* 7 bits EOF + 3 intermission.
+       We have no chance detecting whether error frame is an overflow frame,
+       but it will be detected as an error frame for sure.
+  */
+  if (rst | go_rx_idle | go_rx_id1 | go_error_frame)
     fdf_r <= 1'b0;
   else if (go_rx_skip_fdf)
     fdf_r <= 1'b1;
+end
+
+wire errframe_during_fdf;
+reg [2:0] fdf_ef_cntr;
+
+assign errframe_during_fdf = fdf_ef_cntr == 3'd6;
+/*
+    Detecting error/overload frame during FD frame.
+    This must be separate as it is not tied to stuffing error
+    (stuffing is ignored during FD).
+*/
+always @(posedge clk or posedge rst)
+begin
+  if (rst)
+    fdf_ef_cntr <= 3'b0;
+  // TODO: zero out on go_rx_skip_fdf, inc only when fdf_r ??
+  else if (sample_point & ~sampled_bit)
+    begin
+      if (fd_fall_edge_lstbtm)
+        fdf_ef_cntr <= 3'b0;
+      else if (fdf_ef_cntr < 3'd6)
+        fdf_ef_cntr <= fdf_ef_cntr + 1'b1;
+    end
 end
 
 can_fd_filter #(
@@ -927,12 +958,12 @@ can_fd_detect i_can_fd_detect (
 always @(posedge clk or posedge rst)
 begin
   if (rst)
-    fd_skip_cnt <= 3'h0;
+    fd_skip_cnt <= 4'h0;
   else if (go_rx_idle | go_rx_id1)
-    fd_skip_cnt <= 3'h0;
+    fd_skip_cnt <= 4'h0;
   else if (go_rx_skip_fdf | (sample_point & (~sampled_bit | fd_fall_edge_lstbtm)))
-    fd_skip_cnt <= 3'h0;
-  else if (fdf_r & sample_point & fd_skip_cnt < 3'h6)
+    fd_skip_cnt <= 4'h0;
+  else if (fdf_r & sample_point & fd_skip_cnt < 4'd11)
     fd_skip_cnt <= fd_skip_cnt + 1'b1;
 end
 `endif
@@ -2211,6 +2242,9 @@ begin
     arbitration_lost <=#Tp 1'b0;
 `ifdef CAN_FD_TOLERANT
   // TODO: go_rx_skip_fdf or fdf_r or fd_fall_edge_lstbtm ?
+  // this should theoretically be moot, as TX should not be allowed when the
+  // bus is not already idle and if our frame is identical to the other (except the FD bit),
+  // we should win ... but it shouldn't hurt to have it
   else if (transmitter & sample_point & tx & arbitration_field & (~sampled_bit | go_rx_skip_fdf))
 `else
   else if (transmitter & sample_point & tx & arbitration_field & ~sampled_bit)
