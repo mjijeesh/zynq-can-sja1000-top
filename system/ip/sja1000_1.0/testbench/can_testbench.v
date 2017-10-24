@@ -12,35 +12,7 @@ parameter Tp = 1;
 parameter BRP = 2*(`CAN_TIMING0_BRP + 1);
 parameter FDBRMUL = 4; // 4* faster that BRP
 
-`ifdef CAN_WISHBONE_IF
-  reg         wb_clk_i;
-  reg         wb_rst_i;
-  reg   [7:0] wb_dat_i;
-  wire  [7:0] wb_dat_o;
-  reg         wb_cyc_i;
-  reg         wb_stb_i;
-  reg         wb_we_i;
-  reg   [7:0] wb_adr_i;
-  wire        wb_ack_o;
-  reg         wb_free;
-`else
-  reg         rst_i;
-  reg         ale_i;
-  reg         rd_i;
-  reg         wr_i;
-  reg         ale2_i;
-  reg         rd2_i;
-  reg         wr2_i;
-  wire  [7:0] port_0;
-  wire  [7:0] port_0_i;
-  reg   [7:0] port_0_o;
-  reg         port_0_en;
-  reg         port_free;
-`endif
 
-
-reg         cs_can;
-reg         cs_can2;
 reg         clk;
 reg         rx;
 wire        tx;
@@ -59,27 +31,32 @@ reg         extended_mode;
 
 event       igor;
 
+reg  [7:0] reg_data_in;
+wire [7:0] reg_data_out;
+reg  [7:0] reg_addr_read;
+reg  [7:0] reg_addr_write;
+
+wire [7:0] can1_reg_data_out;
+wire [7:0] can2_reg_data_out;
+
+reg        reg_rst;
+reg        reg_re;
+reg        reg_we;
+reg  [1:0] reg_devmsk;
+
+assign reg_data_out = reg_devmsk[0] ? can1_reg_data_out : (reg_devmsk[1] ? can2_reg_data_out : 8'hzz);
+
 // Instantiate can_top module
-can_top i_can_top
+can_top_raw i_can_top
 ( 
-`ifdef CAN_WISHBONE_IF
-  .wb_clk_i(wb_clk_i),
-  .wb_rst_i(wb_rst_i),
-  .wb_dat_i(wb_dat_i),
-  .wb_dat_o(wb_dat_o),
-  .wb_cyc_i(wb_cyc_i),
-  .wb_stb_i(wb_stb_i),
-  .wb_we_i(wb_we_i),
-  .wb_adr_i(wb_adr_i),
-  .wb_ack_o(wb_ack_o),
-`else
-  .cs_can_i(cs_can),
-  .rst_i(rst_i),
-  .ale_i(ale_i),
-  .rd_i(rd_i),
-  .wr_i(wr_i),
-  .port_0_io(port_0),
-`endif
+  .reg_we_i(reg_we & reg_devmsk[0]),
+  .reg_re_i(reg_re & reg_devmsk[0]),
+  .reg_data_in(reg_data_in),
+  .reg_data_out(can1_reg_data_out),
+  .reg_addr_read_i(reg_addr_read),
+  .reg_addr_write_i(reg_addr_write),
+  .reg_rst_i(reg_rst),
+
   .clk_i(clk),
   .rx_i(rx_and_tx),
   .tx_o(tx_i),
@@ -99,26 +76,16 @@ can_top i_can_top
 
 
 // Instantiate can_top module 2
-can_top i_can_top2
+can_top_raw i_can_top2
 ( 
-`ifdef CAN_WISHBONE_IF
-  .wb_clk_i(wb_clk_i),
-  .wb_rst_i(wb_rst_i),
-  .wb_dat_i(wb_dat_i),
-  .wb_dat_o(wb_dat_o),
-  .wb_cyc_i(wb_cyc_i),
-  .wb_stb_i(wb_stb_i),
-  .wb_we_i(wb_we_i),
-  .wb_adr_i(wb_adr_i),
-  .wb_ack_o(wb_ack_o),
-`else
-  .cs_can_i(cs_can2),
-  .rst_i(rst_i),
-  .ale_i(ale2_i),
-  .rd_i(rd2_i),
-  .wr_i(wr2_i),
-  .port_0_io(port_0),
-`endif
+  .reg_we_i(reg_we & reg_devmsk[1]),
+  .reg_re_i(reg_re & reg_devmsk[1]),
+  .reg_data_in(reg_data_in),
+  .reg_data_out(can2_reg_data_out),
+  .reg_addr_read_i(reg_addr_read),
+  .reg_addr_write_i(reg_addr_write),
+  .reg_rst_i(reg_rst),
+
   .clk_i(clk),
   .rx_i(rx_and_tx),
   .tx_o(tx2_i),
@@ -152,23 +119,6 @@ initial begin
 end
 
 
-`ifdef CAN_WISHBONE_IF
-  // Generate wishbone clock signal 10 MHz
-  initial
-  begin
-    wb_clk_i=0;
-    forever #50 wb_clk_i = ~wb_clk_i;
-  end
-`endif
-
-
-`ifdef CAN_WISHBONE_IF
-`else
-  assign port_0_i = port_0;
-  assign port_0 = port_0_en? port_0_o : 8'hz;
-`endif
-
-
 // Generate clock signal 25 MHz
 // Generate clock signal 16 MHz
 initial
@@ -181,41 +131,20 @@ end
 
 initial
 begin
-  start_tb = 0;
-  cs_can = 0;
-  cs_can2 = 0;
+  start_tb = 1'b0;
+  reg_re = 1'b0;
+  reg_we = 1'b0;
+  reg_devmsk = 1'bx;
+  reg_data_in = 'hx;
+  reg_addr_read = 'hx;
+  reg_addr_write = 'hx;
   rx = 1;
   extended_mode = 0;
   tx_bypassed = 0;
-
-  `ifdef CAN_WISHBONE_IF
-    wb_dat_i = 'hz;
-    wb_cyc_i = 0;
-    wb_stb_i = 0;
-    wb_we_i = 'hz;
-    wb_adr_i = 'hz;
-    wb_free = 1;
-    wb_rst_i = 1;
-    #200 wb_rst_i = 0;
-    #200 start_tb = 1;
-  `else
-    rst_i = 1'b0;
-    ale_i = 1'b0;
-    rd_i  = 1'b0;
-    wr_i  = 1'b0;
-    ale2_i = 1'b0;
-    rd2_i  = 1'b0;
-    wr2_i  = 1'b0;
-    port_0_o = 8'h0;
-    port_0_en = 0;
-    port_free = 1;
-    rst_i = 1;
-    #200 rst_i = 0;
-    #200 start_tb = 1;
-  `endif
+  reg_rst = 1;
+  #200 reg_rst = 0;
+  #200 start_tb = 1;
 end
-
-
 
 
 // Generating delayed tx signal (CAN transciever delay)
@@ -239,12 +168,10 @@ begin
   wait(start_tb);
 
   // Set bus timing register 0
-  write_register(8'd6, {`CAN_TIMING0_SJW, `CAN_TIMING0_BRP});
-  write_register2(8'd6, {`CAN_TIMING0_SJW, `CAN_TIMING0_BRP});
+  write_register_impl(2'h3, 8'd6, {`CAN_TIMING0_SJW, `CAN_TIMING0_BRP});
 
   // Set bus timing register 1
-  write_register(8'd7, {`CAN_TIMING1_SAM, `CAN_TIMING1_TSEG2, `CAN_TIMING1_TSEG1});
-  write_register2(8'd7, {`CAN_TIMING1_SAM, `CAN_TIMING1_TSEG2, `CAN_TIMING1_TSEG1});
+  write_register_impl(2'h3, 8'd7, {`CAN_TIMING1_SAM, `CAN_TIMING1_TSEG2, `CAN_TIMING1_TSEG1});
 
 
   // Set Clock Divider register
@@ -278,13 +205,12 @@ begin
   // Set Acceptance Code and Acceptance Mask registers
   write_register(8'd4, 8'he8); // acceptance code
   write_register(8'd5, 8'h0f); // acceptance mask
-  
+
   #10;
   repeat (1000) @ (posedge clk);
-  
+
   // Switch-off reset mode
-  write_register(8'd0, {7'h0, ~(`CAN_MODE_RESET)});
-  write_register2(8'd0, {7'h0, ~(`CAN_MODE_RESET)});
+  write_register_impl(2'h3, 8'd0, {7'h0, ~(`CAN_MODE_RESET)});
 
   repeat (BRP) @ (posedge clk);   // At least BRP clocks needed before bus goes to dominant level. Otherwise 1 quant difference is possible
                                   // This difference is resynchronized later.
@@ -2325,230 +2251,83 @@ end
 endtask
 
 
-task read_register;
-  input [7:0] reg_addr;
+task read_register_impl;
+  input        dev_addr;
+  input  [7:0] reg_addr;
   output [7:0] data;
-
-  `ifdef CAN_WISHBONE_IF
-    begin
-      wait (wb_free);
-      wb_free = 0;
-      @ (posedge wb_clk_i);
-      #1; 
-      cs_can = 1;
-      wb_adr_i = reg_addr;
-      wb_cyc_i = 1;
-      wb_stb_i = 1;
-      wb_we_i = 0;
-      wait (wb_ack_o);
-      $display("(%0t) Reading register [%0d] = 0x%0x", $time, wb_adr_i, wb_dat_o);
-      data = wb_dat_o;
-      @ (posedge wb_clk_i);
-      #1; 
-      wb_adr_i = 'hz;
-      wb_cyc_i = 0;
-      wb_stb_i = 0;
-      wb_we_i = 'hz;
-      cs_can = 0;
-      wb_free = 1;
-    end
-  `else
-    begin
-      wait (port_free);
-      port_free = 0;
-      @ (posedge clk);
-      #1;
-      cs_can = 1;
-      @ (negedge clk);
-      #1;
-      ale_i = 1;
-      port_0_en = 1;
-      port_0_o = reg_addr;
-      @ (negedge clk);
-      #1;
-      ale_i = 0;
-      #90;            // 73 - 103 ns
-      port_0_en = 0;
-      rd_i = 1;
-      #158;
-      $display("(%0t) Reading register [%0d] = 0x%0x", $time, can_testbench.i_can_top.addr_latched, port_0_i);
-      data = port_0_i;
-      #1;
-      rd_i = 0;
-      cs_can = 0;
-      port_free = 1;
-    end
-  `endif
+  begin
+    @ (posedge clk);
+    #1;
+    reg_devmsk = dev_addr;
+    #1;
+    reg_addr_read = reg_addr;
+    reg_re = 1'b1;
+    @ (posedge clk);
+    @ (posedge clk); // testbench propagation delay ...
+    $display("(%0t) Reading register #%d[%0d] = 0x%0x", $time, dev_addr, reg_addr, reg_data_out);
+    data = reg_data_out;
+    #1;
+    reg_addr_read = 'hx;
+    reg_re = 1'b0;
+    reg_devmsk = 1'bx;
+  end
 endtask
 
+
+task write_register_impl;
+  input       dev_addr;
+  input [7:0] reg_addr;
+  input [7:0] reg_data;
+
+  begin
+    $display("(%0t) Writing register #%d[%0d] with 0x%0x", $time, dev_addr, reg_addr, reg_data);
+    @ (posedge clk);
+    #1;
+    reg_devmsk = dev_addr;
+    #1;
+    reg_addr_write = reg_addr;
+    reg_data_in = reg_data;
+    reg_we = 1'b1;
+    @ (posedge clk);
+    #10;
+    reg_we = 1'b0;
+    reg_addr_write = 'hx;
+    reg_data_in = 'hx;
+    reg_devmsk = 'hx;
+  end
+endtask
+
+task read_register;
+  input  [7:0] reg_addr;
+  output [7:0] reg_data;
+  begin
+    read_register_impl(2'h1, reg_addr, reg_data);
+  end
+endtask
+
+task read_register2;
+  input  [7:0] reg_addr;
+  output [7:0] reg_data;
+  begin
+    read_register_impl(2'h2, reg_addr, reg_data);
+  end
+endtask
 
 task write_register;
   input [7:0] reg_addr;
   input [7:0] reg_data;
-
-  `ifdef CAN_WISHBONE_IF
-    begin
-      wait (wb_free);
-      wb_free = 0;
-      @ (posedge wb_clk_i);
-      #1; 
-      cs_can = 1;
-      wb_adr_i = reg_addr;
-      wb_dat_i = reg_data;
-      wb_cyc_i = 1;
-      wb_stb_i = 1;
-      wb_we_i = 1;
-      wait (wb_ack_o);
-      @ (posedge wb_clk_i);
-      #1; 
-      wb_adr_i = 'hz;
-      wb_dat_i = 'hz;
-      wb_cyc_i = 0;
-      wb_stb_i = 0;
-      wb_we_i = 'hz;
-      cs_can = 0;
-      wb_free = 1;
-    end
-  `else
-    begin
-      $display("(%0t) Writing register [%0d] with 0x%0x", $time, reg_addr, reg_data);
-      wait (port_free);
-      port_free = 0;
-      @ (posedge clk);
-      #1;
-      cs_can = 1;
-      @ (negedge clk);
-      #1;
-      ale_i = 1;
-      port_0_en = 1;
-      port_0_o = reg_addr;
-      @ (negedge clk);
-      #1;
-      ale_i = 0;
-      #90;            // 73 - 103 ns
-      port_0_o = reg_data;
-      wr_i = 1;
-      #158;
-      wr_i = 0;
-      port_0_en = 0;
-      cs_can = 0;
-      port_free = 1;
-    end
-  `endif
+  begin
+    write_register_impl(2'h1, reg_addr, reg_data);
+  end
 endtask
-
-
-task read_register2;
-  input [7:0] reg_addr;
-  output [7:0] data;
-
-  `ifdef CAN_WISHBONE_IF
-    begin
-      wait (wb_free);
-      wb_free = 0;
-      @ (posedge wb_clk_i);
-      #1; 
-      cs_can = 1;
-      wb_adr_i = reg_addr;
-      wb_cyc_i = 1;
-      wb_stb_i = 1;
-      wb_we_i = 0;
-      wait (wb_ack_o);
-      $display("(%0t) Reading register [%0d] = 0x%0x", $time, wb_adr_i, wb_dat_o);
-      data = wb_dat_o;
-      @ (posedge wb_clk_i);
-      #1; 
-      wb_adr_i = 'hz;
-      wb_cyc_i = 0;
-      wb_stb_i = 0;
-      wb_we_i = 'hz;
-      cs_can = 0;
-      wb_free = 1;
-    end
-  `else
-    begin
-      wait (port_free);
-      port_free = 0;
-      @ (posedge clk);
-      #1;
-      cs_can2 = 1;
-      @ (negedge clk);
-      #1;
-      ale2_i = 1;
-      port_0_en = 1;
-      port_0_o = reg_addr;
-      @ (negedge clk);
-      #1;
-      ale2_i = 0;
-      #90;            // 73 - 103 ns
-      port_0_en = 0;
-      rd2_i = 1;
-      #158;
-      $display("(%0t) Reading register [%0d] = 0x%0x", $time, can_testbench.i_can_top.addr_latched, port_0_i);
-      data = port_0_i;
-      #1;
-      rd2_i = 0;
-      cs_can2 = 0;
-      port_free = 1;
-    end
-  `endif
-endtask
-
 
 task write_register2;
   input [7:0] reg_addr;
   input [7:0] reg_data;
-
-  `ifdef CAN_WISHBONE_IF
-    begin
-      wait (wb_free);
-      wb_free = 0;
-      @ (posedge wb_clk_i);
-      #1; 
-      cs_can = 1;
-      wb_adr_i = reg_addr;
-      wb_dat_i = reg_data;
-      wb_cyc_i = 1;
-      wb_stb_i = 1;
-      wb_we_i = 1;
-      wait (wb_ack_o);
-      @ (posedge wb_clk_i);
-      #1; 
-      wb_adr_i = 'hz;
-      wb_dat_i = 'hz;
-      wb_cyc_i = 0;
-      wb_stb_i = 0;
-      wb_we_i = 'hz;
-      cs_can = 0;
-      wb_free = 1;
-    end
-  `else
-    begin
-      wait (port_free);
-      port_free = 0;
-      @ (posedge clk);
-      #1;
-      cs_can2 = 1;
-      @ (negedge clk);
-      #1;
-      ale2_i = 1;
-      port_0_en = 1;
-      port_0_o = reg_addr;
-      @ (negedge clk);
-      #1;
-      ale2_i = 0;
-      #90;            // 73 - 103 ns
-      port_0_o = reg_data;
-      wr2_i = 1;
-      #158;
-      wr2_i = 0;
-      port_0_en = 0;
-      cs_can2 = 0;
-      port_free = 1;
-    end
-  `endif
+  begin
+    write_register_impl(2'h2, reg_addr, reg_data);
+  end
 endtask
-
 
 task read_receive_buffer;
   integer i;
