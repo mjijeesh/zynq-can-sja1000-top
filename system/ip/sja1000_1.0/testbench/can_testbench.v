@@ -1366,52 +1366,15 @@ task bus_off_test;    // Testbench sends a frame
         repeat (1)
         begin
           send_bit(0);  // SOF
-          send_bit(1);  // ID
-          send_bit(1);  // ID
-          send_bit(1);  // ID
-          send_bit(0);  // ID
-          send_bit(1);  // ID
-          send_bit(0);  // ID
-          send_bit(0);  // ID
-          send_bit(0);  // ID
-          send_bit(1);  // ID
-          send_bit(0);  // ID
-          send_bit(1);  // ID
-          send_bit(1);  // RTR
-          send_bit(0);  // IDE
-          send_bit(0);  // r0
-          send_bit(0);  // DLC
-          send_bit(1);  // DLC
-          send_bit(1);  // DLC
-          send_bit(1);  // DLC
-          send_bit(1);  // CRC
-          send_bit(0);  // CRC
-          send_bit(0);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(0);  // CRC
-          send_bit(1);  // CRC
-          send_bit(0);  // CRC
-          send_bit(0);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC
-          send_bit(1);  // CRC DELIM
-          send_bit(0);  // ACK
-          send_bit(1);  // ACK DELIM
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // EOF
-          send_bit(1);  // INTER
-          send_bit(1);  // INTER
-          send_bit(1);  // INTER
+          send_bits(11, 11'b11101000101);      // ID
+          send_bits(3,   3'b100);              // RTR, IDE, r0
+          send_bits(4,   4'b0111);             // DLC
+          send_bits(15, 15'b100111010011111);  // CRC
+          send_bit(1);                         // CRC DELIM
+          send_bit(0);                         // ACK
+          send_bit(1);                         // ACK DELIM
+          send_bits(7,   7'b1111111);          // EOF
+          send_bits(3,   3'b111);              // INTER
         end // repeat
       end
 
@@ -2440,6 +2403,16 @@ task send_bit;
   end
 endtask
 
+task send_bits;
+  input integer cnt;
+  input [1023:0] data;
+  integer c;
+  begin
+    for (c=cnt; c > 0; c=c-1)
+      send_bit(data[c-1]);
+  end
+endtask
+
 task send_fd_bit;
   input bit;
   integer cnt;
@@ -2449,6 +2422,16 @@ task send_fd_bit;
   end
 endtask
 
+
+task send_fd_bits;
+  input integer cnt;
+  input [1023:0] data;
+  integer c;
+  begin
+    for (c=cnt; c > 0; c=c-1)
+      send_fd_bit(data[c-1]);
+  end
+endtask
 
 
 task receive_frame;           // CAN IP core receives frames
@@ -2785,112 +2768,34 @@ task manual_fd_frame_basic_rcv;
         $display("sending FD frame");
         ///*
         send_bit(0);  // SOF
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID arbi lost
+        send_bits(11, 11'b01010101010);    // ID
         send_bit(1);  // RTR
         send_bit(0);  // IDE
-        send_bit(1);  // r0 -- FD
-        send_bit(1);  // DLC
-        send_bit(1);  // DLC
-        send_bit(1);  // DLC
-        send_bit(1);  // DLC
-        repeat (20) // is really 50 bytes, not 64, but for this test it does not matter
-        begin
-        repeat (5) send_fd_bit(1);
-        send_fd_bit(0);
-        end
+        send_bit(1);  // FD
+        send_bits(4, 4'b0111);             // DLC
+        repeat (10) send_fd_bits(6, 6'b111110);
         // some invalid stuff, does not really matter
-        send_bit(1);  // CRC
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC stuff
-        send_bit(0);  // CRC 6
-        send_bit(0);  // CRC
-        send_bit(0);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC  stuff
-        send_bit(0);  // CRC 0
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC 5
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC
-        send_bit(1);  // CRC b
+        send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
         send_bit(1);  // CRC DELIM
         send_bit(0);  // ACK
         send_bit(1);  // ACK DELIM
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // INTER
-        send_bit(1);  // INTER
-        send_bit(1);  // INTER
+        send_bits(7, 7'b1111111); // EOF
+        send_bits(3, 7'b111); // INTER
         //*/
 //repeat (32) send_bit(1);
         $display("sending OK frame");
         send_bit(0);  // SOF
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID
-        send_bit(1);  // ID
-        send_bit(0);  // ID arbi lost
+        send_bits(11, 11'b01010101010);    // ID
         send_bit(1);  // RTR
         send_bit(0);  // IDE
         send_bit(0);  // r0
-        send_bit(0);  // DLC
-        send_bit(1);  // DLC
-        send_bit(1);  // DLC
-        send_bit(1);  // DLC
-        send_bit(1);  // CRC
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC stuff
-        send_bit(0);  // CRC 6
-        send_bit(0);  // CRC
-        send_bit(0);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC  stuff
-        send_bit(0);  // CRC 0
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC 5
-        send_bit(1);  // CRC
-        send_bit(0);  // CRC
-        send_bit(1);  // CRC
-        send_bit(1);  // CRC b
+        send_bits(4, 4'b0111);             // DLC
+        send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
         send_bit(1);  // CRC DELIM
         send_bit(0);  // ACK
         send_bit(1);  // ACK DELIM
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // EOF
-        send_bit(1);  // INTER
-        send_bit(1);  // INTER
-        send_bit(1);  // INTER
+        send_bits(7, 7'b1111111); // EOF
+        send_bits(3, 7'b111); // INTER
     end // repeat
     join
 
