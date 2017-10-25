@@ -564,10 +564,16 @@ can_btl i_can_btl
   
   /* output from can_bsp module */
   .rx_idle(rx_idle),
-  .rx_inter(rx_inter | fdf_r),
   .transmitting(transmitting),
   .transmitter(transmitter),
+`ifdef CAN_FD_TOLERANT
+  // also needed for hard_sync for bsp.go_crc_enable
+  .rx_inter(rx_inter | fdf_r),
   .go_rx_inter(go_rx_inter | go_rx_skip_fdf),
+`else
+  .rx_inter(rx_inter),
+  .go_rx_inter(go_rx_inter),
+`endif
   .tx_next(tx_next),
 
   .go_overload_frame(go_overload_frame),

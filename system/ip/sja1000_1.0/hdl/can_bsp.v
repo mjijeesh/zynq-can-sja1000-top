@@ -708,7 +708,7 @@ wire          fd_fall_edge_lstbtm;
 wire          fd_fall_edge_raw;
 
 reg           go_rx_skip_fdf; // async
-reg     [2:0] fd_skip_cnt;
+reg     [3:0] fd_skip_cnt;
 wire          fd_skip_finished;
 `endif
 
@@ -821,7 +821,11 @@ assign go_rx_id2      = (~bit_de_stuff) & sample_point &  rx_ide  &   sampled_bi
 assign go_rx_rtr2     = (~bit_de_stuff) & sample_point &  rx_id2  & (bit_cnt[4:0] == 5'd17);
 assign go_rx_r1       = (~bit_de_stuff) & sample_point &  rx_rtr2;
 assign go_rx_r0       = (~bit_de_stuff) & sample_point & (rx_ide  & (~sampled_bit) | rx_r1);
+`ifdef CAN_FD_TOLERANT
+assign go_rx_dlc      = (~bit_de_stuff) & sample_point &  rx_r0 & (~go_rx_skip_fdf);
+`else
 assign go_rx_dlc      = (~bit_de_stuff) & sample_point &  rx_r0;
+`endif
 assign go_rx_data     = (~bit_de_stuff) & sample_point &  rx_dlc  & (bit_cnt[1:0] == 2'd3) &  (sampled_bit   |   (|data_len[2:0])) & (~remote_rq);
 assign go_rx_crc      = (~bit_de_stuff) & sample_point & (rx_dlc  & (bit_cnt[1:0] == 2'd3) & ((~sampled_bit) & (~(|data_len[2:0])) | remote_rq) |
                                                           rx_data & (bit_cnt[5:0] == ((limited_data_len<<3) - 1'b1)));  // overflow works ok at max value (8<<3 = 64 = 0). 0-1 = 6'h3f
@@ -843,8 +847,13 @@ assign go_overload_frame = (     sample_point & ((~sampled_bit) | overload_reque
                            ;
 
 
+`ifdef CAN_FD_TOLERANT
+assign go_crc_enable  = (hard_sync & ~fdf_r) | go_tx;
+assign rst_crc_enable = go_rx_crc | go_rx_skip_fdf;
+`else
 assign go_crc_enable  = hard_sync | go_tx;
 assign rst_crc_enable = go_rx_crc;
+`endif
 
 assign bit_de_stuff_set   = go_rx_id1 & (~go_error_frame);
 `ifdef CAN_FD_TOLERANT
@@ -925,10 +934,12 @@ begin
   if (rst)
     fdf_ef_cntr <= 3'b0;
   // TODO: zero out on go_rx_skip_fdf, inc only when fdf_r ??
+  else if (sample_point &  sampled_bit)
+    fdf_ef_cntr <= 3'b0;
   else if (sample_point & ~sampled_bit)
     begin
       if (fd_fall_edge_lstbtm)
-        fdf_ef_cntr <= 3'b0;
+        fdf_ef_cntr <= 3'b1;
       else if (fdf_ef_cntr < 3'd6)
         fdf_ef_cntr <= fdf_ef_cntr + 1'b1;
     end
