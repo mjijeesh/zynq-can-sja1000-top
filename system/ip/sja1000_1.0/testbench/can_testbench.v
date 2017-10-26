@@ -513,6 +513,10 @@ task send_bit;
   begin
     #1 rx=bit;
     repeat ((`CAN_TIMING1_TSEG1 + `CAN_TIMING1_TSEG2 + 3)*BRP) @ (posedge clk);
+    if (rx_and_tx != bit) begin
+      $display("send_bit arbitration lost!");
+      $stop;
+    end
   end
 endtask
 
@@ -540,6 +544,10 @@ task send_fd_bit;
   begin
     #1 rx=bit;
     repeat ((`CAN_TIMING1_TSEG1 + `CAN_TIMING1_TSEG2 + 3)*BRP/FDBRMUL) @ (posedge clk);
+    if (rx_and_tx != bit) begin
+      $display("send_fd_bit arbitration lost!");
+      $stop;
+    end
   end
 endtask
 

@@ -1974,6 +1974,7 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
   reg [7:0] tmp;
   integer cnt;
   integer done;
+  integer wc;
   begin
     txd = 2'h2;
     rxd = 2'h1;
@@ -1991,7 +1992,7 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
     // Enable irqs (basic mode)
     write_register_impl(2'h3, 8'd0, 8'h1e);
 
-    for (cnt = 0; cnt < 52; cnt = cnt + 1)
+    for (cnt = 0; cnt < 10; cnt = cnt + 1)
     begin
       $display("(%d) CYCLE #%d", $time, cnt);
       done = 0;
@@ -2006,7 +2007,9 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
           end
         end
         begin
-          repeat (cnt) wait_bit;
+          wc = $urandom % 52;
+          $display("watiting %d cycles", wc);
+          repeat (wc) wait_bit;
 
           $display("sending req");
           tx_request_command_impl(txd);
@@ -2039,6 +2042,7 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
         begin
           $display("sending FD frame");
           //can1_isolate_rx = 1'b0;
+
           send_bit(0);  // SOF
           send_bits(11, 11'b01010101010);    // ID
           send_bit(1);  // RTR
@@ -2056,6 +2060,7 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
           send_bits(3, 3'b111); // INTER
         end
       join
+      send_bits(3, 3'b111); // INTER
     end
   end
 endtask   // send_into_fd_frame
