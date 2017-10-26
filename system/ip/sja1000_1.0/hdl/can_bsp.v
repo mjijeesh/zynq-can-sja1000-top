@@ -920,10 +920,19 @@ begin
     fdf_r <= 1'b1;
 end
 
-wire errframe_during_fdf;
+reg       errframe_during_fdf;
 reg [2:0] fdf_ef_cntr;
 
-assign errframe_during_fdf = fdf_ef_cntr == 3'd6;
+always @(posedge clk or posedge rst)
+begin
+  if (rst)
+    errframe_during_fdf <= 1'b0;
+  else if (fdf_ef_cntr == 3'd6)
+    errframe_during_fdf <= 1'b1;
+  else if (fd_skip_finished)
+    errframe_during_fdf <= 1'b0;
+end
+
 /*
     Detecting error/overload frame during FD frame.
     This must be separate as it is not tied to stuffing error
