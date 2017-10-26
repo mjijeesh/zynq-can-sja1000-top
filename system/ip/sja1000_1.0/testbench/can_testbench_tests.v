@@ -1968,10 +1968,65 @@ task manual_fd_frame_basic_rcv;
 endtask   //  manual_fd_frame_basic_rcv
 //------------------------------------------------------------------------------
 
+task send_fake_fd_frame;
+begin
+    $display("sending FD frame");
+    //can1_isolate_rx = 1'b0;
+
+    send_bit(0);  // SOF
+    send_bits(11, 11'b01010101010);    // ID
+    send_bit(1);  // RTR
+    send_bit(0);  // IDE
+    send_bit(1);  // FD
+    send_bits(4, 4'b0111);             // DLC
+    repeat (10) send_fd_bits(6, 6'b111110);
+    // some invalid stuff, does not really matter
+    send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
+    send_bit(1);  // CRC DELIM
+    send_bit(0);  // ACK
+    send_bit(1);  // ACK DELIM
+    send_bits(7, 7'b1111111); // EOF
+    //can1_isolate_rx = 1'b0;
+    send_bits(3, 3'b111); // INTER
+end
+endtask
+
+task send_and_receive_frame;
+  input [1:0] txd;
+  input [1:0] rxd;
+  reg   [7:0] tmp;
+begin
+    $display("sending req");
+    tx_request_command_impl(txd);
+    wait (|(~irqns & txd));
+    $display("IRQ from TX caught");
+    read_register_impl(txd, 8'd3, tmp); // read IR
+    $display("TX IR: 0x%02h", tmp);
+    casex (tmp)
+    8'hx2: ;
+    default: begin
+        $display("Unexpected TX irq!");
+        $stop;
+    end
+    endcase
+    wait (|(~irqns & rxd));
+    read_register_impl(rxd, 8'd3, tmp); // read status
+    $display("RX IR: 0x%02h", tmp);
+    casex (tmp)
+    8'hx1: ;
+    default: begin
+        $display("Unexpected RX irq!");
+        $stop;
+    end
+    endcase
+    read_receive_buffer_impl(rxd);
+    release_rx_buffer_command_impl(rxd);
+end
+endtask
+
 task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN FD frame
   reg [1:0] txd;
   reg [1:0] rxd;
-  reg [7:0] tmp;
   integer cnt;
   integer done;
   integer wc;
@@ -1993,78 +2048,117 @@ task test_tx_after_fdf;    // CAN IP core sends frames during reception of CAN F
     write_register_impl(2'h3, 8'd0, 8'h1e);
 
     for (cnt = 0; cnt < 10; cnt = cnt + 1)
-    begin
-      $display("(%d) CYCLE #%d", $time, cnt);
-      done = 0;
-      fork
-        begin
-          while (!done) begin
-            @(posedge clk);
-            if (i_can_top.i_can_bsp.go_error_frame) begin
-              $display("ERROR: error frame detected!");
-              $stop;
+      begin
+        $display("(%d) CYCLE #%d", $time, cnt);
+        done = 0;
+        fork
+          begin
+            while (!done) begin
+              @(posedge clk);
+              if (i_can_top.i_can_bsp.go_error_frame) begin
+                $display("ERROR: error frame detected!");
+                $stop;
+              end
             end
           end
-        end
-        begin
-          wc = $urandom % 52;
-          $display("watiting %d cycles", wc);
-          repeat (wc) wait_bit;
-
-          $display("sending req");
-          tx_request_command_impl(txd);
-          wait (|(~irqns & txd));
-          $display("IRQ from TX caught");
-          read_register_impl(txd, 8'd3, tmp); // read IR
-          $display("TX IR: 0x%02h", tmp);
-          casex (tmp)
-            8'hx2: ;
-            default: begin
-              $display("Unexpected TX irq!");
-              $stop;
-            end
-          endcase
-          wait (|(~irqns & rxd));
-          read_register_impl(rxd, 8'd3, tmp); // read status
-          $display("RX IR: 0x%02h", tmp);
-          casex (tmp)
-            8'hx1: ;
-            default: begin
-              $display("Unexpected RX irq!");
-              $stop;
-            end
-          endcase
-          read_receive_buffer;
-          release_rx_buffer_command;
-          done = 1;
-        end
-
-        begin
-          $display("sending FD frame");
-          //can1_isolate_rx = 1'b0;
-
-          send_bit(0);  // SOF
-          send_bits(11, 11'b01010101010);    // ID
-          send_bit(1);  // RTR
-          send_bit(0);  // IDE
-          send_bit(1);  // FD
-          send_bits(4, 4'b0111);             // DLC
-          repeat (10) send_fd_bits(6, 6'b111110);
-          // some invalid stuff, does not really matter
-          send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
-          send_bit(1);  // CRC DELIM
-          send_bit(0);  // ACK
-          send_bit(1);  // ACK DELIM
-          send_bits(7, 7'b1111111); // EOF
-          //can1_isolate_rx = 1'b0;
-          send_bits(3, 3'b111); // INTER
-        end
-      join
-      send_bits(3, 3'b111); // INTER
-    end
+          begin
+            wc = $urandom % 52;
+            $display("watiting %d cycles", wc);
+            repeat (wc) wait_bit;
+            send_and_receive_frame(txd, rxd);
+            done = 1;
+          end
+          begin
+            send_fake_fd_frame;
+          end
+        join
+        send_bits(3, 3'b111); // INTER
+      end
   end
-endtask   // send_into_fd_frame
+endtask   // test_tx_after_fdf
 //------------------------------------------------------------------------------
+
+task test_tx_after_fdf_err;    // variation
+  reg [1:0] txd;
+  reg [1:0] rxd;
+  integer cnt;
+  integer done;
+  integer wc;
+  begin
+    txd = 2'h2;
+    rxd = 2'h1;
+    write_register_impl(txd, 8'd10, 8'hea); // Writing ID[10:3] = 0xea
+    write_register_impl(txd, 8'd11, 8'h28); // Writing ID[2:0] = 0x1, rtr = 0, length = 8
+    write_register_impl(txd, 8'd12, 8'h56); // data byte 1
+    write_register_impl(txd, 8'd13, 8'h78); // data byte 2
+    write_register_impl(txd, 8'd14, 8'h9a); // data byte 3
+    write_register_impl(txd, 8'd15, 8'hbc); // data byte 4
+    write_register_impl(txd, 8'd16, 8'hde); // data byte 5
+    write_register_impl(txd, 8'd17, 8'hf0); // data byte 6
+    write_register_impl(txd, 8'd18, 8'h0f); // data byte 7
+    write_register_impl(txd, 8'd19, 8'hed); // data byte 8
+
+    // Enable irqs (basic mode)
+    write_register_impl(2'h3, 8'd0, 8'h1e);
+
+    for (cnt = 0; cnt < 10; cnt = cnt + 1)
+      begin
+        $display("(%d) CYCLE #%d", $time, cnt);
+        done = 0;
+        fork
+          begin
+            while (!done) begin
+              @(posedge clk);
+              if (i_can_top.i_can_bsp.go_error_frame) begin
+                $display("ERROR: error frame detected!");
+                $stop;
+              end
+            end
+          end
+          begin
+            wc = $urandom % 52;
+            $display("watiting %d cycles", wc);
+            repeat (wc) wait_bit;
+            send_and_receive_frame(txd, rxd);
+            done = 1;
+          end
+          begin
+            $display("sending FD frame");
+            send_bit(0);  // SOF
+            send_bits(11, 11'b01010101010);    // ID
+            send_bit(1);  // RTR
+            send_bit(0);  // IDE
+            send_bit(1);  // FD
+            send_bits(4, 4'b0111);             // DLC
+            repeat (10) send_fd_bits(6, 6'b111110);
+            // send_bits checks for arbitration loss, so this checks the timing lower bound
+            if ($urandom % 2)
+              begin
+                $display("sending Error Frame");
+                send_bits(6, 6'h00); // Error Frame
+                if ($urandom % 2)
+                  send_bits($urandom % 10, 10'h000); // let's extend it a bit ...
+                send_bits(8, 8'hFF); // delimiter
+                send_bits(3, 3'b111); // INTER
+              end
+            else
+              begin
+                $display("sending Overload Frame");
+                send_bits(7, 7'h7F); // EOF
+                send_bits(6, 6'h00); // Error Frame
+                if ($urandom % 2)
+                  send_bits($urandom % 10, 10'h000); // let's extend it a bit ...
+                send_bits(8, 8'hFF); // delimiter
+                send_bits(3, 3'b111); // INTER
+              end
+          end
+        join
+        send_bits(3, 3'b111); // INTER
+      end
+  end
+endtask   // test_tx_after_fdf_err
+//------------------------------------------------------------------------------
+
 
 task test_synchronization;
   begin

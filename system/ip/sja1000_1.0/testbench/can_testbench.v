@@ -242,7 +242,8 @@ begin
 //    bus_off_recovery_test;
     //manual_fd_frame_basic_rcv;
     //send_into_fd_frame;
-    test_tx_after_fdf;
+    //test_tx_after_fdf;
+    test_tx_after_fdf_err;
 
 
 /*
@@ -435,21 +436,22 @@ task write_register2;
 endtask
 //------------------------------------------------------------------------------
 
-task read_receive_buffer;
+task read_receive_buffer_impl;
+  input [1:0] msk;
   integer i;
   begin
     $display("\n\n(%0t)", $time);
     if(extended_mode)   // Extended mode
       begin
         for (i=8'd16; i<=8'd28; i=i+1)
-          read_register(i, tmp_data);
+          read_register_impl(msk, i, tmp_data);
         //if (can_testbench.i_can_top.i_can_bsp.i_can_fifo.overrun)
         //  $display("\nWARNING: Above packet was received with overrun.");
       end
     else
       begin
         for (i=8'd20; i<=8'd29; i=i+1)
-          read_register(i, tmp_data);
+          read_register_impl(msk, i, tmp_data);
         //if (can_testbench.i_can_top.i_can_bsp.i_can_fifo.overrun)
         //  $display("\nWARNING: Above packet was received with overrun.");
       end
@@ -457,11 +459,22 @@ task read_receive_buffer;
 endtask
 //------------------------------------------------------------------------------
 
-task release_rx_buffer_command;
+task read_receive_buffer;
+  read_receive_buffer_impl(2'h1);
+endtask
+//------------------------------------------------------------------------------
+
+task release_rx_buffer_command_impl;
+  input [1:0] msk;
   begin
-    write_register(8'd1, 8'h4);
+    write_register_impl(msk, 8'd1, 8'h4);
     $display("(%0t) Rx buffer released.", $time);
   end
+endtask
+//------------------------------------------------------------------------------
+
+task release_rx_buffer_command;
+  release_rx_buffer_command_impl(2'h1);
 endtask
 //------------------------------------------------------------------------------
 
