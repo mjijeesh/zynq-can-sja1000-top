@@ -245,6 +245,7 @@ module can_fd_filter #(
 );
 
 parameter integer SHIFT_REG_LEN = NSAMPLES-1;
+parameter Tp = 1;
 
 reg   [SHIFT_REG_LEN-1:0]  shift_r;
 wire allzero;
@@ -261,7 +262,7 @@ begin
   if (rst)
     shift_r <= {(SHIFT_REG_LEN){1'b1}};
   else
-    shift_r <= {shift_r[SHIFT_REG_LEN-2 : 0], rx_sync_i};
+    shift_r <=#Tp {shift_r[SHIFT_REG_LEN-2 : 0], rx_sync_i};
 end
 
 assign allzero = ((| shift_r) | rx_sync_i) == 1'b0;
@@ -272,9 +273,9 @@ begin
   if (rst)
     filteredrx_ro <= 1'b1;
   else if (allone)
-    filteredrx_ro <= 1'b1;
+    filteredrx_ro <=#Tp 1'b1;
   else if (allzero)
-    filteredrx_ro <= 1'b0;
+    filteredrx_ro <=#Tp 1'b0;
 end
 
 /*
@@ -303,6 +304,7 @@ module can_fd_detect (
   // Set on 1-to-0 transition in FD mode (on fast clock), reset on sample_point
   output reg  fall_edge_lstbtm_ro
 );
+parameter Tp = 1;
 
 always @ (posedge clk or posedge rst)
 begin
@@ -313,9 +315,9 @@ begin
        *and* the RX signal itself is read in that cycle, so the dominant state
        is accounted for anyway.
     */
-    fall_edge_lstbtm_ro <= 1'b0;
+    fall_edge_lstbtm_ro <=#Tp 1'b0;
   else if (fall_edge_i)
-    fall_edge_lstbtm_ro <= 1'b1;
+    fall_edge_lstbtm_ro <=#Tp 1'b1;
 end
 
 endmodule
@@ -903,7 +905,7 @@ begin
 end
 
 /* Current received frame is CAN FD one and needs to be ignored */
-always @ (posedge clk)
+always @ (posedge clk or posedge rst)
 begin
   /*
      error_frame: When we are transmitting and fdf_r is errorneously detected as 1 (bus error), we should send error
@@ -914,10 +916,12 @@ begin
        We have no chance detecting whether error frame is an overflow frame,
        but it will be detected as an error frame for sure.
   */
-  if (rst | go_rx_idle | go_rx_id1 | go_error_frame)
+  if (rst)
     fdf_r <= 1'b0;
+  else if (rst | go_rx_idle | go_rx_id1 | go_error_frame)
+    fdf_r <=#Tp 1'b0;
   else if (go_rx_skip_fdf)
-    fdf_r <= 1'b1;
+    fdf_r <=#Tp 1'b1;
 end
 
 reg       errframe_during_fdf;
@@ -928,9 +932,9 @@ begin
   if (rst)
     errframe_during_fdf <= 1'b0;
   else if (fdf_ef_cntr == 3'd6)
-    errframe_during_fdf <= 1'b1;
+    errframe_during_fdf <=#Tp 1'b1;
   else if (fd_skip_finished)
-    errframe_during_fdf <= 1'b0;
+    errframe_during_fdf <=#Tp 1'b0;
 end
 
 /*
@@ -944,13 +948,13 @@ begin
     fdf_ef_cntr <= 3'b0;
   // TODO: zero out on go_rx_skip_fdf, inc only when fdf_r ??
   else if (sample_point &  sampled_bit)
-    fdf_ef_cntr <= 3'b0;
+    fdf_ef_cntr <=#Tp 3'b0;
   else if (sample_point & ~sampled_bit)
     begin
       if (fd_fall_edge_lstbtm)
-        fdf_ef_cntr <= 3'b1;
+        fdf_ef_cntr <=#Tp 3'b1;
       else if (fdf_ef_cntr < 3'd6)
-        fdf_ef_cntr <= fdf_ef_cntr + 1'b1;
+        fdf_ef_cntr <=#Tp fdf_ef_cntr + 1'b1;
     end
 end
 
@@ -980,11 +984,11 @@ begin
   if (rst)
     fd_skip_cnt <= 4'h0;
   else if (go_rx_idle | go_rx_id1)
-    fd_skip_cnt <= 4'h0;
+    fd_skip_cnt <=#Tp 4'h0;
   else if (go_rx_skip_fdf | (sample_point & (~sampled_bit | fd_fall_edge_lstbtm)))
-    fd_skip_cnt <= 4'h0;
+    fd_skip_cnt <=#Tp 4'h0;
   else if (fdf_r & sample_point & fd_skip_cnt < 4'd11)
-    fd_skip_cnt <= fd_skip_cnt + 1'b1;
+    fd_skip_cnt <=#Tp fd_skip_cnt + 1'b1;
 end
 `endif
 

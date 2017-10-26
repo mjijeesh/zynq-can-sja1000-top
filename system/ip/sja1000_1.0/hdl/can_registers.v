@@ -1086,14 +1086,7 @@ can_register #(8) ACCEPTANCE_MASK_REG3
 
 
 // Reading data from registers
-always @ ( addr_read or extended_mode or mode or bus_timing_0 or bus_timing_1 or clock_divider or
-           acceptance_code_0 or acceptance_code_1 or acceptance_code_2 or acceptance_code_3 or
-           acceptance_mask_0 or acceptance_mask_1 or acceptance_mask_2 or acceptance_mask_3 or
-           reset_mode or tx_data_0 or tx_data_1 or tx_data_2 or tx_data_3 or tx_data_4 or 
-           tx_data_5 or tx_data_6 or tx_data_7 or tx_data_8 or tx_data_9 or status or 
-           error_warning_limit or rx_err_cnt or tx_err_cnt or irq_en_ext or irq_reg or mode_ext or
-           arbitration_lost_capture or rx_message_counter or mode_basic or error_capture_code
-         )
+always @ (*)
 begin
   //data_out = addr_read; // DBG
   case({extended_mode, addr_read[4:0]})  // synthesis parallel_case 
