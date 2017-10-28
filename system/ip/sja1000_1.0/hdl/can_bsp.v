@@ -850,7 +850,7 @@ assign go_overload_frame = (     sample_point & ((~sampled_bit) | overload_reque
 
 
 `ifdef CAN_FD_TOLERANT
-assign go_crc_enable  = (hard_sync & ~fdf_r) | go_tx;
+assign go_crc_enable  = (hard_sync & (~fdf_r)) | go_tx;
 assign rst_crc_enable = go_rx_crc | go_rx_skip_fdf;
 `else
 assign go_crc_enable  = hard_sync | go_tx;
@@ -897,11 +897,11 @@ assign fd_skip_finished = fd_skip_cnt >= (errframe_during_fdf ? 4'd11 : 4'd10);
 always @(*)
 begin
   if(rx_r0 & (~ide))
-    go_rx_skip_fdf <= sample_point & sampled_bit & (~bit_de_stuff);
+    go_rx_skip_fdf = sample_point & sampled_bit & (~bit_de_stuff);
   else if(rx_r1 & ide)
-    go_rx_skip_fdf <= sample_point & sampled_bit & (~bit_de_stuff);
+    go_rx_skip_fdf = sample_point & sampled_bit & (~bit_de_stuff);
   else
-    go_rx_skip_fdf <= 1'b0;
+    go_rx_skip_fdf = 1'b0;
 end
 
 /* Current received frame is CAN FD one and needs to be ignored */
@@ -918,7 +918,7 @@ begin
   */
   if (rst)
     fdf_r <= 1'b0;
-  else if (rst | go_rx_idle | go_rx_id1 | go_error_frame)
+  else if (reset_mode | go_rx_idle | go_rx_id1 | go_error_frame)
     fdf_r <=#Tp 1'b0;
   else if (go_rx_skip_fdf)
     fdf_r <=#Tp 1'b1;
@@ -931,10 +931,10 @@ always @(posedge clk or posedge rst)
 begin
   if (rst)
     errframe_during_fdf <= 1'b0;
+  else if (reset_mode | fd_skip_finished)
+    errframe_during_fdf <=#Tp 1'b0;
   else if (fdf_ef_cntr == 3'd6)
     errframe_during_fdf <=#Tp 1'b1;
-  else if (fd_skip_finished)
-    errframe_during_fdf <=#Tp 1'b0;
 end
 
 /*
@@ -946,10 +946,11 @@ always @(posedge clk or posedge rst)
 begin
   if (rst)
     fdf_ef_cntr <= 3'b0;
-  // TODO: zero out on go_rx_skip_fdf, inc only when fdf_r ??
-  else if (sample_point &  sampled_bit)
+  else if (reset_mode | go_rx_skip_fdf)
+    fdf_ef_cntr <= 3'b0;
+  else if (fdf_r & sample_point &  sampled_bit)
     fdf_ef_cntr <=#Tp 3'b0;
-  else if (sample_point & ~sampled_bit)
+  else if (fdf_r & sample_point & (~sampled_bit))
     begin
       if (fd_fall_edge_lstbtm)
         fdf_ef_cntr <=#Tp 3'b1;
@@ -964,7 +965,7 @@ can_fd_filter #(
   .rst(rst),
   .clk(clk),
   .rx_sync_i(rx_sync_i),
-  //.rx_filtered_o(fd_filtered_rx),
+  //.rx_filtered_o(),
   .fall_edge_o(fd_fall_edge_raw)
 );
 
@@ -983,7 +984,7 @@ always @(posedge clk or posedge rst)
 begin
   if (rst)
     fd_skip_cnt <= 4'h0;
-  else if (go_rx_idle | go_rx_id1)
+  else if (go_rx_idle | go_rx_id1 | reset_mode)
     fd_skip_cnt <=#Tp 4'h0;
   else if (go_rx_skip_fdf | (sample_point & (~sampled_bit | fd_fall_edge_lstbtm)))
     fd_skip_cnt <=#Tp 4'h0;
@@ -1946,9 +1947,7 @@ assign send_ack = (~tx_state) & rx_ack & (~err) & (~listen_only_mode);
 
 
 
-always @ (reset_mode or node_bus_off or tx_state or go_tx or bit_de_stuff_tx or tx_bit or tx_q or
-          send_ack or go_overload_frame or overload_frame or overload_cnt1 or
-          go_error_frame or error_frame or error_cnt1 or node_error_passive)
+always @ (*)
 begin
   if (reset_mode | node_bus_off)                                                // Reset or node_bus_off
     tx_next = 1'b1;
@@ -2155,7 +2154,7 @@ begin
   if (rst)
     tx_state <= 1'b0;
 `ifdef CAN_FD_TOLERANT
-  else if (reset_mode | go_rx_inter | error_frame | arbitration_lost | go_rx_skip_fdf)
+  else if (reset_mode | go_rx_inter | error_frame | arbitration_lost | go_rx_skip_fdf | fdf_r)
 `else
   else if (reset_mode | go_rx_inter | error_frame | arbitration_lost)
 `endif
@@ -2269,7 +2268,7 @@ begin
   // this should theoretically be moot, as TX should not be allowed when the
   // bus is not already idle and if our frame is identical to the other (except the FD bit),
   // we should win ... but it shouldn't hurt to have it
-  else if (transmitter & sample_point & tx & arbitration_field & (~sampled_bit | go_rx_skip_fdf))
+  else if (transmitter & sample_point & tx & arbitration_field & ((~sampled_bit) | go_rx_skip_fdf))
 `else
   else if (transmitter & sample_point & tx & arbitration_field & ~sampled_bit)
 `endif
@@ -2428,7 +2427,7 @@ begin
     begin
       `ifdef CAN_FD_TOLERANT
       // TODO: & ~(fdr_r & fd_fall_edge_lstbtm) ?
-      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & ~fd_fall_edge_lstbtm)
+      if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10) & (~fd_fall_edge_lstbtm))
       `else
       if (sampled_bit & bus_free_cnt_en & (bus_free_cnt < 4'd10))
       `endif

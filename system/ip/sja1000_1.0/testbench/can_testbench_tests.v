@@ -1904,10 +1904,10 @@ task manual_fd_frame_basic_rcv;
 
     $monitor("*I (%0t) MON: tx_i = %b, fdf_r = %b", $time, tx_i,
 `ifdef CAN_FD_TOLERANT
-    can_testbench.i_can_top.i_can_bsp.fdf_r,
+    can_testbench.i_can_top.i_can_bsp.fdf_r
     //can_testbench.i_can_top.i_can_bsp.fd_fall_edge_raw
 `else
-    0, 0, 0
+    0
 `endif
 );
     done = 0;
@@ -2131,6 +2131,10 @@ task test_tx_after_fdf_err;    // variation
             send_bit(1);  // FD
             send_bits(4, 4'b0111);             // DLC
             repeat (10) send_fd_bits(6, 6'b111110);
+            send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
+            send_bit(1);  // CRC DELIM
+            //send_bit(0);  // ACK
+            //send_bit(1);  // ACK DELIM
             // send_bits checks for arbitration loss, so this checks the timing lower bound
             if ($urandom % 2)
               begin
@@ -2157,6 +2161,73 @@ task test_tx_after_fdf_err;    // variation
       end
   end
 endtask   // test_tx_after_fdf_err
+//------------------------------------------------------------------------------
+
+task test_resync_fd_err;
+  reg [1:0] txd;
+  reg [1:0] rxd;
+  integer cnt;
+  integer done;
+  integer wc;
+  begin
+    txd = 2'h2;
+    rxd = 2'h1;
+    write_register_impl(txd, 8'd10, 8'hea); // Writing ID[10:3] = 0xea
+    write_register_impl(txd, 8'd11, 8'h28); // Writing ID[2:0] = 0x1, rtr = 0, length = 8
+    write_register_impl(txd, 8'd12, 8'h56); // data byte 1
+    write_register_impl(txd, 8'd13, 8'h78); // data byte 2
+    write_register_impl(txd, 8'd14, 8'h9a); // data byte 3
+    write_register_impl(txd, 8'd15, 8'hbc); // data byte 4
+    write_register_impl(txd, 8'd16, 8'hde); // data byte 5
+    write_register_impl(txd, 8'd17, 8'hf0); // data byte 6
+    write_register_impl(txd, 8'd18, 8'h0f); // data byte 7
+    write_register_impl(txd, 8'd19, 8'hed); // data byte 8
+
+    // Enable RX+TX irq (basic mode)
+    write_register_impl(2'h3, 8'd0, 8'h06);
+
+      begin
+        done = 0;
+        fork
+          begin
+            repeat (10) wait_bit;
+            send_and_receive_frame(txd, rxd);
+            done = 1;
+          end
+          begin
+            $display("sending too many error frames");
+            repeat (256) send_bit(0);
+            repeat (11) send_bit(1);
+
+            $display("sending FD frame");
+            send_bit(0);  // SOF
+            //send_bits(11, 11'b01010101010);    // ID
+            send_bits(11, 11'b00010000100);    // ID
+            send_bit(1);  // RTR
+            send_bit(0);  // IDE
+            send_bit(1);  // FD
+            send_bits(4, 4'b0111);             // DLC
+            repeat (10) send_fd_bits(6, 6'b111110);
+            send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
+            send_bit(1);  // CRC DELIM
+            //send_bit(0);  // ACK
+            //send_bit(1);  // ACK DELIM
+            // send_bits checks for arbitration loss, so this checks the timing lower bound
+            send_bits(6, 6'h00);
+            send_bits(8, 8'hFF); // delim
+            send_bits(3, 3'b111); // INTER
+
+          end
+        join
+      end
+  end
+endtask
+//------------------------------------------------------------------------------
+
+task test_fd_collision;
+  begin
+  end
+endtask
 //------------------------------------------------------------------------------
 
 

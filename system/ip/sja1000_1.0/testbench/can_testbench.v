@@ -243,7 +243,9 @@ begin
     //manual_fd_frame_basic_rcv;
     //send_into_fd_frame;
     //test_tx_after_fdf;
-    test_tx_after_fdf_err;
+    //test_tx_after_fdf_err;
+    test_resync_fd_err;
+    test_fd_collision;
 
 
 /*
@@ -522,11 +524,11 @@ endtask
 //------------------------------------------------------------------------------
 
 task send_bit;
-  input bit;
+  input val;
   begin
-    #1 rx=bit;
+    #1 rx=val;
     repeat ((`CAN_TIMING1_TSEG1 + `CAN_TIMING1_TSEG2 + 3)*BRP) @ (posedge clk);
-    if (rx_and_tx != bit) begin
+    if (rx_and_tx != val) begin
       $display("send_bit arbitration lost!");
       $stop;
     end
@@ -552,12 +554,12 @@ endtask
 //------------------------------------------------------------------------------
 
 task send_fd_bit;
-  input bit;
+  input val;
   integer cnt;
   begin
-    #1 rx=bit;
+    #1 rx=val;
     repeat ((`CAN_TIMING1_TSEG1 + `CAN_TIMING1_TSEG2 + 3)*BRP/FDBRMUL) @ (posedge clk);
-    if (rx_and_tx != bit) begin
+    if (rx_and_tx != val) begin
       $display("send_fd_bit arbitration lost!");
       $stop;
     end
