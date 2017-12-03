@@ -261,7 +261,7 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
         adc_mosi: out std_logic;                --spi master out slave in
 
         adc_channels: out std_logic_vector (71 downto 0);    --consistent data of 3 channels
-        measur_count: out std_logic_vector(8 downto 0)        --number of accumulated measurments
+        measur_count: out std_logic_vector(11 downto 0)      --number of accumulated measurments
     );
     end component;
 
@@ -288,7 +288,7 @@ architecture arch_imp of pmsm_3pmdrv1_v1_0 is
     signal clk_4MHz : std_logic;
 
 	signal adc_channels: std_logic_vector(71 downto 0);
-	signal adc_m_count: std_logic_vector(8 downto 0);
+	signal adc_m_count: std_logic_vector(11 downto 0);
 
 	--filetered irc signals
 	signal irc_a_dff3: std_logic;
@@ -576,8 +576,8 @@ pwm_block: for i in pwm_n downto 1 generate
     pwm_en_p(3) <= pwm3(30);	--enable "negative" ->activate shutdown
 	pwm_match(3) <= pwm3(pwm_width-1 downto 0);
 
-    adc_sqn_stat(8 downto 0) <= adc_m_count;
-    adc_sqn_stat(15 downto 9) <= (others => '0');
+    adc_sqn_stat(11 downto 0) <= adc_m_count;
+    adc_sqn_stat(15 downto 12) <= (others => '0');
 
     adc_sqn_stat(16) <= HAL_SENS(1);
     adc_sqn_stat(17) <= HAL_SENS(2);

@@ -30,7 +30,7 @@ port (
 	adc_mosi: out std_logic;				--spi master out slave in
 	
 	adc_channels: out std_logic_vector (71 downto 0);	--consistent data of 3 channels
-	measur_count: out std_logic_vector(8 downto 0)		--number of accumulated measurments
+	measur_count: out std_logic_vector(11 downto 0)		--number of accumulated measurments
 	
 );
 end adc_reader;
@@ -49,7 +49,7 @@ architecture behavioral of adc_reader is
 	signal adc_address: std_logic_vector(2 downto 0);
 	signal cumul_data: std_logic_vector(71 downto 0);	--unconsistent data, containing different amounts of measurments
 	signal prepared_data: std_logic_vector(71 downto 0);	--consistent data, waiting for clk sync to propagate to output
-	signal m_count_sig: std_logic_vector(8 downto 0);	--measurments count waiting for clk to propagate to output
+	signal m_count_sig: std_logic_vector(11 downto 0);	--measurments count waiting for clk to propagate to output
 	signal first_pass: std_logic;
 begin
 	
@@ -150,31 +150,31 @@ begin
 				if (first_pass='0') then
 					--add the current current to sum and shift the register
 					cumul_data(71 downto 0)<=
-						std_logic_vector(unsigned(cumul_data(47 downto 24))
+						std_logic_vector(unsigned(cumul_data(23 downto 0))
 							+unsigned(adc_data(11 downto 0)))
-						& cumul_data(23 downto 0)
-						& cumul_data(71 downto 48);
+						& cumul_data(71 downto 48)
+						& cumul_data(47 downto 24);
 				end if;
 				state<=f8;
 			when f8=> --8th falling edge
 				adc_sclk<='0';
 				adc_mosi<='0'; --PD0
-				if (first_pass='0') then
-					case channel is
-						when ch0=>
-							adc_address<="101";	--ch1 address
-							channel:=ch1;		--next channel code
-						when ch1=>
-							adc_address<="010";	--ch2 address
-							channel:=ch2;		--next channel code
-						when ch2=>
-							--data order schould be: ch2 downto ch0 downto ch1
+				case channel is
+					when ch0=>
+						adc_address<="101";	--ch1 address
+						channel:=ch1;		--next channel code
+						if (first_pass='0') then
+							--data order is ch2 downto ch1 downto ch0
 							prepared_data(71 downto 0)<=cumul_data(71 downto 0);
 							m_count_sig<=std_logic_vector(unsigned(m_count_sig)+1);
-							adc_address<="001";	--ch0 address
-							channel:=ch0;		--next channel code
-					end case;
-				end if;
+						end if;
+					when ch1=>
+						adc_address<="010";	--ch2 address
+						channel:=ch2;		--next channel code
+					when ch2=>
+						adc_address<="001";	--ch0 address
+						channel:=ch0;		--next channel code
+				end case;
 				state<=r8;
 			when r8=> --8th rising edge (adc gets PD0), we propagate our results to output
 				adc_sclk<='1';
