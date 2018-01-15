@@ -52,6 +52,9 @@ if { $::argc > 0 } {
 # Set the directory path for the original project from where this script was exported
 set orig_proj_dir "[file normalize "$origin_dir/../project"]"
 
+# set path for sourced scripts
+set origin_dir_loc "$origin_dir/../src"
+
 # Create project
 create_project canbench ../project
 
@@ -81,6 +84,9 @@ set_property "ip_repo_paths" "[file normalize "$origin_dir/../ip"]" $obj
 
 # Rebuild user ip_repo's index before adding any source files
 update_ip_catalog -rebuild
+
+# Create top.bd
+source top.tcl
 
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]

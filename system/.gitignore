@@ -1,8 +1,3 @@
 /project
-/src/top/hdl/*
-/src/top/ip/*
-/src/top/hw_handoff/*
-/src/top/top.bxml
-/src/top/top_ooc.xdc
-
+/src/top
 edit_*
