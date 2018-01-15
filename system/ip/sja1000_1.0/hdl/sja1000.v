@@ -29,6 +29,8 @@
 		input  wire can_rx,
 		output wire can_tx,
 		output wire bus_off_on,
+
+		output wire [31:0] dbg_ports_o,
 		// User ports ends
 		// Do not modify the ports beyond this line
 
@@ -125,7 +127,104 @@
 	);
 
 	// Add user logic here
+	/*
+	// Interesting BSP signals:
+input         hard_sync;
+reg           rx_idle;
+reg           rx_id1;
+reg           rx_rtr1;
+reg           rx_ide;
+reg           rx_id2;
+reg           rx_rtr2;
+reg           rx_r1;
+reg           rx_r0;
+reg           rx_dlc;
+reg           rx_data;
+reg           rx_crc;
+reg           rx_crc_lim;
+reg           rx_ack;
+reg           rx_ack_lim;
+reg           rx_eof;
+reg           rx_inter;
+reg           go_early_tx_latched;
+reg           rtr1;
+reg           ide;
+reg           rtr2;
+reg           transmitting;
+reg           error_frame;
+reg           arbitration_lost;
+reg           need_to_tx;   // When the CAN core has something to transmit and a dominant bit is sampled at the third bit
+reg           transmitter;
+reg           bus_free;
+reg           waiting_for_bus_free;
+reg           node_error_passive;
+reg           node_bus_off;
+reg           suspend;
+reg           fdf_r;
+wire          fd_fall_edge_lstbtm; // Fall edge detected inside preceding bittime
+wire          fd_fall_edge_raw;
+reg           go_rx_skip_fdf; // async
+wire          fd_skip_finished;
+wire          bit_de_stuff;
+wire          bit_de_stuff_tx;
+wire          go_rx_idle;
+wire          go_rx_id1;
+wire          go_rx_rtr1;
+wire          go_rx_ide;
+wire          go_rx_id2;
+wire          go_rx_rtr2;
+wire          go_rx_r1;
+wire          go_rx_r0;
+wire          go_rx_dlc;
+wire          go_rx_data;
+wire          go_rx_crc;
+wire          go_rx_crc_lim;
+wire          go_rx_ack;
+wire          go_rx_ack_lim;
+wire          go_rx_eof;
+wire          go_rx_inter;
+wire          last_bit_of_inter;
+wire          go_crc_enable;
+wire          go_early_tx;
+wire          form_err;
+wire          error_frame_ended;
+wire          overload_frame_ended;
+wire          bit_err;
+wire          ack_err;
+wire          stuff_err;
+wire          err;
+	*/
+    assign dbg_ports_o[ 0] = can_top_raw_inst.i_can_bsp.rx_sync_i;
+    assign dbg_ports_o[ 1] = can_top_raw_inst.i_can_bsp.rx_eof;
+    assign dbg_ports_o[ 2] = can_top_raw_inst.i_can_bsp.rx_inter;
+    assign dbg_ports_o[ 3] = can_top_raw_inst.i_can_bsp.rx_ack;
+    assign dbg_ports_o[ 4] = can_top_raw_inst.i_can_bsp.rx_idle;
+    assign dbg_ports_o[ 5] = can_top_raw_inst.i_can_bsp.rx_id1;
+    assign dbg_ports_o[ 6] = can_top_raw_inst.i_can_bsp.go_early_tx_latched;
+    assign dbg_ports_o[ 7] = can_top_raw_inst.i_can_bsp.transmitting;
+    assign dbg_ports_o[ 8] = can_top_raw_inst.i_can_bsp.error_frame;
+    assign dbg_ports_o[ 9] = can_top_raw_inst.i_can_bsp.bus_free;
+    assign dbg_ports_o[10] = can_top_raw_inst.i_can_bsp.waiting_for_bus_free;
+    assign dbg_ports_o[11] = can_top_raw_inst.i_can_bsp.node_error_passive;
+    assign dbg_ports_o[12] = can_top_raw_inst.i_can_bsp.node_bus_off;
+    assign dbg_ports_o[13] = can_top_raw_inst.i_can_bsp.suspend;
+    assign dbg_ports_o[14] = can_top_raw_inst.i_can_bsp.fdf_r;
+    assign dbg_ports_o[15] = can_top_raw_inst.i_can_bsp.fd_fall_edge_lstbtm;
+    assign dbg_ports_o[16] = can_top_raw_inst.i_can_bsp.fd_fall_edge_raw;
+    assign dbg_ports_o[17] = can_top_raw_inst.i_can_bsp.go_rx_skip_fdf;
+    assign dbg_ports_o[18] = can_top_raw_inst.i_can_bsp.fd_skip_finished;
+    assign dbg_ports_o[19] = can_top_raw_inst.i_can_bsp.bit_de_stuff;
+    assign dbg_ports_o[20] = can_top_raw_inst.i_can_bsp.bit_de_stuff_tx;
+    assign dbg_ports_o[21] = can_top_raw_inst.i_can_bsp.go_rx_idle;
+    assign dbg_ports_o[22] = can_top_raw_inst.i_can_bsp.go_rx_id1;
+    assign dbg_ports_o[23] = can_top_raw_inst.i_can_bsp.go_rx_ack;
+    assign dbg_ports_o[24] = can_top_raw_inst.i_can_bsp.go_rx_ack_lim;
+    assign dbg_ports_o[25] = can_top_raw_inst.i_can_bsp.go_rx_eof;
+    assign dbg_ports_o[26] = can_top_raw_inst.i_can_bsp.go_rx_inter;
+    assign dbg_ports_o[27] = can_top_raw_inst.i_can_bsp.last_bit_of_inter;
+    assign dbg_ports_o[28] = can_top_raw_inst.i_can_bsp.go_early_tx;
+    assign dbg_ports_o[29] = can_top_raw_inst.i_can_bsp.go_tx;
+    assign dbg_ports_o[30] = can_top_raw_inst.i_can_bsp.error_frame_ended;
+    assign dbg_ports_o[31] = can_top_raw_inst.i_can_bsp.err;
 
-	// User logic ends
-
-	endmodule
+endmodule
