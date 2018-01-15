@@ -244,8 +244,9 @@ begin
     //send_into_fd_frame;
     //test_tx_after_fdf;
     //test_tx_after_fdf_err;
-    test_resync_fd_err;
-    test_fd_collision;
+    //test_resync_fd_err;
+    //test_fd_collision;
+    test_txerr;
 
 
 /*

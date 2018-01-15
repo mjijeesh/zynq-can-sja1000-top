@@ -1983,7 +1983,7 @@ begin
     // some invalid stuff, does not really matter
     send_bits(15+2, 17'b11000001001011011); // CRC (with 2 stuff bits)
     send_bit(1);  // CRC DELIM
-    send_bit(0);  // ACK
+    send_bit(1);  // ACK
     send_bit(1);  // ACK DELIM
     send_bits(7, 7'b1111111); // EOF
     //can1_isolate_rx = 1'b0;
@@ -2101,7 +2101,7 @@ task test_tx_after_fdf_err;    // variation
     // Enable irqs (basic mode)
     write_register_impl(2'h3, 8'd0, 8'h1e);
 
-    for (cnt = 0; cnt < 10; cnt = cnt + 1)
+    for (cnt = 0; cnt < 1; cnt = cnt + 1)
       begin
         $display("(%d) CYCLE #%d", $time, cnt);
         done = 0;
@@ -2136,7 +2136,7 @@ task test_tx_after_fdf_err;    // variation
             //send_bit(0);  // ACK
             //send_bit(1);  // ACK DELIM
             // send_bits checks for arbitration loss, so this checks the timing lower bound
-            if ($urandom % 2)
+            if (1 || $urandom % 2)
               begin
                 $display("sending Error Frame");
                 send_bits(6, 6'h00); // Error Frame
@@ -2224,8 +2224,104 @@ task test_resync_fd_err;
 endtask
 //------------------------------------------------------------------------------
 
-task test_fd_collision;
+task test_txerr;
+  reg [1:0] txd;
+  reg [1:0] rxd;
+  reg [7:0] tmp;
+  integer cnt;
+  integer done;
+  integer wc;
   begin
+    txd = 2'h2;
+    rxd = 2'h1;
+    write_register_impl(txd, 8'd10, 8'hea); // Writing ID[10:3] = 0xea
+    write_register_impl(txd, 8'd11, 8'h28); // Writing ID[2:0] = 0x1, rtr = 0, length = 8
+    write_register_impl(txd, 8'd12, 8'h56); // data byte 1
+    write_register_impl(txd, 8'd13, 8'h78); // data byte 2
+    write_register_impl(txd, 8'd14, 8'h9a); // data byte 3
+    write_register_impl(txd, 8'd15, 8'hbc); // data byte 4
+    write_register_impl(txd, 8'd16, 8'hde); // data byte 5
+    write_register_impl(txd, 8'd17, 8'hf0); // data byte 6
+    write_register_impl(txd, 8'd18, 8'h0f); // data byte 7
+    write_register_impl(txd, 8'd19, 8'hed); // data byte 8
+
+    // Enable irqs (basic mode)
+    write_register_impl(2'h3, 8'd0, 8'h1e);
+
+    repeat(11) send_bit(1);
+
+    can1_isolate_rx = 1; // prevent sending ACKS
+    $display("sending req");
+    tx_request_command_impl(txd);
+    repeat (32) // no more!
+    begin
+        $display("A1");
+        wait (i_can_top2.i_can_bsp.go_tx);
+        $display("A2");
+        wait (i_can_top2.i_can_bsp.go_rx_dlc); // go out of arbitration phase
+        $display("A3");
+        wait (i_can_top2.i_can_bsp.sample_point);
+        $display("A4");
+        send_bits(3, 3'h0);
+        #1 rx = 1;
+        //wait (i_can_top2.i_can_bsp.error_frame_ended);
+    end
+    // now can2 is in bus_off
+    // we try:
+    // 1) send a valid frame
+    // 2) wait 128x11 consecutive recesive bits
+    // a) clear tx err counter (requires extended mode)
+    // b) reset the SJA
+
+    can1_isolate_rx = 0;
+    $display("RX enabled");
+
+    write_register_impl(txd, 8'd0, 8'h01); // reset
+    write_register_impl(txd, 8'd0, 8'h1e); // out of reset, enable irsq
+    write_register_impl(txd, 8'd10, 8'hea); // Writing ID[10:3] = 0xea
+    write_register_impl(txd, 8'd11, 8'h28); // Writing ID[2:0] = 0x1, rtr = 0, length = 8
+    write_register_impl(txd, 8'd12, 8'h56); // data byte 1
+    write_register_impl(txd, 8'd13, 8'h78); // data byte 2
+    write_register_impl(txd, 8'd14, 8'h9a); // data byte 3
+    write_register_impl(txd, 8'd15, 8'hbc); // data byte 4
+    write_register_impl(txd, 8'd16, 8'hde); // data byte 5
+    write_register_impl(txd, 8'd17, 8'hf0); // data byte 6
+    write_register_impl(txd, 8'd18, 8'h0f); // data byte 7
+    write_register_impl(txd, 8'd19, 8'hed); // data byte 8
+
+    $display("sending req");
+    tx_request_command_impl(txd);
+
+    repeat (11*3) send_bit(1);
+    send_fake_fd_frame;
+
+    repeat (11*3) send_bit(1);
+    send_fake_fd_frame;
+
+/*
+    $display("sending quiet -> bus should be free after this");
+    repeat (128*11) send_bit(1);
+*/
+    wait (|(~irqns & txd));
+    $display("IRQ from TX caught");
+    read_register_impl(txd, 8'd3, tmp); // read IR
+    $display("TX IR: 0x%02h", tmp);
+    wait (|(~irqns & rxd));
+    read_receive_buffer_impl(rxd);
+    release_rx_buffer_command_impl(rxd);
+
+
+
+    $display("sending req");
+    tx_request_command_impl(txd);
+    wait (|(~irqns & txd));
+    $display("IRQ from TX caught");
+    read_register_impl(txd, 8'd3, tmp); // read IR
+    $display("TX IR: 0x%02h", tmp);
+    wait (|(~irqns & rxd));
+    read_receive_buffer_impl(rxd);
+    release_rx_buffer_command_impl(rxd);
+
   end
 endtask
 //------------------------------------------------------------------------------
