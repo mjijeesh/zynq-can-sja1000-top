@@ -21,9 +21,15 @@ entity zlogan_capt_v1_0 is
   );
   port (
     -- Users to add ports here
-    la_reset: in std_logic;
     la_clock: in std_logic;
     la_inp: in std_logic_vector (la_n_inp-1 downto 0);
+
+    fifo_data_count_i : in std_logic_vector(31 downto 0);
+    fifo_wr_data_count_i : in std_logic_vector(31 downto 0);
+    fifo_rd_data_count_i : in std_logic_vector(31 downto 0);
+    
+    fifo_reset_n : out std_logic;
+
     -- User ports ends
     -- Do not modify the ports beyond this line
 
@@ -67,11 +73,22 @@ architecture arch_imp of zlogan_capt_v1_0 is
   -- component declaration
   component zlogan_capt_s00_axi is
     generic (
+    la_n_inp : integer;
     C_S_AXI_DATA_WIDTH  : integer  := 32;
     C_S_AXI_ADDR_WIDTH  : integer  := 6
     );
     port (
     reg_enable_o : out std_logic;
+    reg_la_reset_o : out std_logic;
+    reg_dma_trig_o : out std_logic;
+    reg_dma_reset_o : out std_logic;
+    reg_dma_len_o : out unsigned(29 downto 0);
+    reg_dma_xrun_i : in std_logic;
+    fifo_data_count_i : in std_logic_vector(31 downto 0);
+    fifo_wr_data_count_i : in std_logic_vector(31 downto 0);
+    fifo_rd_data_count_i : in std_logic_vector(31 downto 0);
+    fifo_reset_n_o : out std_logic;
+    la_inp : in std_logic_vector(la_n_inp-1 downto 0);
     S_AXI_ACLK  : in std_logic;
     S_AXI_ARESETN  : in std_logic;
     S_AXI_AWADDR  : in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -146,16 +163,17 @@ architecture arch_imp of zlogan_capt_v1_0 is
   end component zlogan;
 
   signal dma_data, dma_tstamp: std_logic_vector (C_M00_AXIS_TDATA_WIDTH-1 downto 0);
-  signal dma_data_valid, dma_trig, dma_rst, dma_xrun, fifo_reset_n: std_logic;
+  signal dma_data_valid, dma_trig, dma_rst, dma_xrun: std_logic;
   signal dma_len: unsigned (29 downto 0);
   signal state_mon: std_logic_vector (2 downto 0);
   signal reg_enable : std_logic;
-
+  signal la_reset : std_logic;
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
 zlogan_capt_s00_axi_inst : zlogan_capt_s00_axi
   generic map (
+    la_n_inp => la_n_inp,
     C_S_AXI_DATA_WIDTH  => C_S00_AXI_DATA_WIDTH,
     C_S_AXI_ADDR_WIDTH  => C_S00_AXI_ADDR_WIDTH
   )
@@ -181,7 +199,17 @@ zlogan_capt_s00_axi_inst : zlogan_capt_s00_axi
     S_AXI_RRESP  => s00_axi_rresp,
     S_AXI_RVALID  => s00_axi_rvalid,
     S_AXI_RREADY  => s00_axi_rready,
-    reg_enable_o => reg_enable
+    reg_enable_o => reg_enable,
+    reg_dma_trig_o => dma_trig,
+    reg_dma_reset_o => dma_rst,
+    reg_dma_len_o => dma_len,
+    reg_dma_xrun_i => dma_xrun,
+    reg_la_reset_o => la_reset,
+    fifo_data_count_i => fifo_data_count_i,
+    fifo_wr_data_count_i => fifo_wr_data_count_i,
+    fifo_rd_data_count_i => fifo_rd_data_count_i,
+    fifo_reset_n_o => fifo_reset_n,
+    la_inp => la_inp
   );
 
 -- Instantiation of Axi Bus Interface M00_AXIS
@@ -221,6 +249,9 @@ zlogan0: zlogan
     out_data => dma_data
   );
 
+  -- TODO: generate timestamp
+  dma_tstamp <= (others => '0');
+  
   -- User logic ends
 
 end arch_imp;
