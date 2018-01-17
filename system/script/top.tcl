@@ -241,6 +241,7 @@ proc create_root_design { parentCell } {
    CONFIG.c_micro_dma {0} \
    CONFIG.c_mm2s_burst_size {16} \
    CONFIG.c_sg_include_stscntrl_strm {0} \
+   CONFIG.c_sg_length_width {23} \
  ] $axi_dma_1
 
   # Create instance: axi_interconnect_0, and set properties

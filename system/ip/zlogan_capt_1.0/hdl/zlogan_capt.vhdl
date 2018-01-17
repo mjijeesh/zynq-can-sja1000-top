@@ -84,6 +84,7 @@ architecture arch_imp of zlogan_capt_v1_0 is
     reg_dma_reset_o : out std_logic;
     reg_dma_len_o : out unsigned(29 downto 0);
     reg_dma_xrun_i : in std_logic;
+    reg_state_mon_i : in std_logic_vector(2 downto 0);
     fifo_data_count_i : in std_logic_vector(31 downto 0);
     fifo_wr_data_count_i : in std_logic_vector(31 downto 0);
     fifo_rd_data_count_i : in std_logic_vector(31 downto 0);
@@ -205,6 +206,7 @@ zlogan_capt_s00_axi_inst : zlogan_capt_s00_axi
     reg_dma_len_o => dma_len,
     reg_dma_xrun_i => dma_xrun,
     reg_la_reset_o => la_reset,
+    reg_state_mon_i => state_mon,
     fifo_data_count_i => fifo_data_count_i,
     fifo_wr_data_count_i => fifo_wr_data_count_i,
     fifo_rd_data_count_i => fifo_rd_data_count_i,

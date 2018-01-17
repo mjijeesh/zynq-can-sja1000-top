@@ -21,6 +21,7 @@ entity zlogan_capt_s00_axi is
     reg_dma_reset_o : out std_logic;
     reg_dma_len_o : out unsigned(29 downto 0);
     reg_dma_xrun_i : in std_logic;
+    reg_state_mon_i : in std_logic_vector(2 downto 0);
     reg_la_reset_o : out std_logic;
     fifo_data_count_i : in std_logic_vector(31 downto 0);
     fifo_wr_data_count_i : in std_logic_vector(31 downto 0);
@@ -562,6 +563,8 @@ begin
 
   -- 2: SR
   slv_reg2(0) <= reg_dma_xrun_i;
+  slv_reg2(15 downto 1) <= (others => '0');
+  slv_reg2(18 downto 16) <= reg_state_mon_i;
   slv_reg2(C_S_AXI_DATA_WIDTH-1 downto 1) <= (others => '0');
 
   --
