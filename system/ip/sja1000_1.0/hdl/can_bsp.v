@@ -678,6 +678,7 @@ reg     [8:0] tx_err_cnt;
 reg     [3:0] bus_free_cnt;
 reg           bus_free_cnt_en;
 reg           bus_free;
+wire          bus_free_uncond;
 reg           waiting_for_bus_free;
 
 reg           node_error_passive;
@@ -2438,40 +2439,37 @@ begin
 end
 
 
+assign bus_free_uncond = sample_point & sampled_bit & (bus_free_cnt==4'd10);
+
+/* must be delayed to be valid for next sample_point, but not this one */
+always @ (posedge clk or posedge rst)
+begin
+  if (rst)
+    bus_free <= 1'b0;
+  else
+    bus_free <= bus_free_uncond & waiting_for_bus_free;
+end
+
+// TODO: merge bus_free_cnt_en and waiting_for_bus_free?
 
 always @ (posedge clk or posedge rst)
 begin
   if (rst)
     bus_free_cnt_en <= 1'b0;
-  // MJ: the `(node_bus_off_q & (~reset_mode))` seems extraneous:
-  // - we are not in reset for a long time and we were bus_off the previous cycle
-  // BUT AFAIK that's impossible, because that would set reset_mode=1 in this cycle
-  else if ((~reset_mode) & reset_mode_q | (node_bus_off_q & (~reset_mode))) // XXX mod
+  else if ((~reset_mode) & reset_mode_q)
     bus_free_cnt_en <=#Tp 1'b1;
-  else if (sample_point & sampled_bit & (bus_free_cnt==4'd10) & (~node_bus_off))
+  else if (bus_free_uncond & (~node_bus_off))
     bus_free_cnt_en <=#Tp 1'b0;
 end
-
-
-always @ (posedge clk or posedge rst)
-begin
-  if (rst)
-    bus_free <= 1'b0;
-  else if (sample_point & sampled_bit & (bus_free_cnt==4'd10) & waiting_for_bus_free)
-    bus_free <=#Tp 1'b1;
-  else
-    bus_free <=#Tp 1'b0;
-end
-
 
 always @ (posedge clk or posedge rst)
 begin
   if (rst)
     waiting_for_bus_free <= 1'b1;
-  else if (bus_free & (~node_bus_off))
-    waiting_for_bus_free <=#Tp 1'b0;
   else if (reset_mode_q & ~reset_mode)
     waiting_for_bus_free <=#Tp 1'b1;
+  else if (bus_free_uncond & (~node_bus_off))
+    waiting_for_bus_free <=#Tp 1'b0;
 end
 
 
