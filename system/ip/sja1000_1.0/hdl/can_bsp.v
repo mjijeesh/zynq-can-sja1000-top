@@ -244,7 +244,7 @@ module can_fd_filter #(
   output wire fall_edge_o
 );
 
-parameter integer SHIFT_REG_LEN = NSAMPLES-1;
+localparam integer SHIFT_REG_LEN = NSAMPLES-1;
 parameter Tp = 1;
 
 reg   [SHIFT_REG_LEN-1:0]  shift_r;
@@ -326,273 +326,142 @@ endmodule
 
 module can_bsp
 ( 
-  clk,
-  rst,
+  input  wire        clk,
+  input  wire        rst,
 
-  sample_point,
-  sampled_bit,
-  sampled_bit_q,
-  tx_point,
-  hard_sync,
+  input  wire        sample_point,
+  input  wire        sampled_bit,
+  input  wire        sampled_bit_q,
+  input  wire        tx_point,
+  input  wire        hard_sync,
 
-  addr, // FIFO read address only
-  data_in, // input data for FIFO and error count settings (looks magical :/)
-  data_out, // from FIFO only
-  fifo_selected, // only forwarded
-  
+  input  wire  [7:0] addr, // FIFO read address only
+  input  wire  [7:0] data_in, // input data for FIFO and error count settings (looks magical :/)
+  output wire  [7:0] data_out, // from FIFO only
+  input  wire        fifo_selected, // only forwarded
+
 `ifdef CAN_FD_TOLERANT
-  rx_sync_i,                // raw RX for busy detection on fast data rate
-  go_rx_skip_fdf_o,
-  fdf_o,
+  input  wire        rx_sync_i, // raw RX for busy detection on fast data rate
+  output wire        go_rx_skip_fdf_o,
+  output wire        fdf_o,
 `endif
 
-
   /* Mode register */
-  reset_mode,
-  listen_only_mode,
-  acceptance_filter_mode,
-  self_test_mode,
+  input  wire        reset_mode,
+  input  wire        listen_only_mode,
+  input  wire        acceptance_filter_mode,
+  input  wire        self_test_mode,
 
   /* Command register */
-  release_buffer,
-  tx_request,
-  abort_tx,
-  self_rx_request,
-  single_shot_transmission,
-  tx_state,
-  tx_state_q,
-  overload_request,
-  overload_frame,
+  input  wire        release_buffer,
+  input  wire        tx_request,
+  input  wire        abort_tx,
+  input  wire        self_rx_request,
+  input  wire        single_shot_transmission,
+  output reg         tx_state,
+  output reg         tx_state_q,
+  input  wire        overload_request,     // When receiver is busy, it needs to send overload frame. Only 2 overload frames are allowed to
+  output reg         overload_frame,       // be send in a row. This is not implemented, yet,  because host can not send an overload request.
 
   /* Arbitration Lost Capture Register */
-  read_arbitration_lost_capture_reg,
+  input  wire        read_arbitration_lost_capture_reg,
 
   /* Error Code Capture Register */
-  read_error_code_capture_reg,
-  error_capture_code,
+  input  wire        read_error_code_capture_reg,
+  output reg   [7:0] error_capture_code,
 
   /* Error Warning Limit register */
-  error_warning_limit,
+  input  wire  [7:0] error_warning_limit,
 
   /* Rx Error Counter register */
-  we_rx_err_cnt,
+  input  wire        we_rx_err_cnt,
 
   /* Tx Error Counter register */
-  we_tx_err_cnt,
+  input  wire        we_tx_err_cnt,
 
   /* Clock Divider register */
-  extended_mode,
+  input  wire        extended_mode,
 
-  rx_idle,
-  transmitting,
-  transmitter,
-  go_rx_inter,
-  not_first_bit_of_inter,
-  rx_inter,
-  set_reset_mode,
-  node_bus_off,
-  error_status,
-  rx_err_cnt,
-  tx_err_cnt,
-  transmit_status,
-  receive_status,
-  tx_successful,
-  need_to_tx,
-  overrun,
-  info_empty,
-  set_bus_error_irq,
-  set_arbitration_lost_irq,
-  arbitration_lost_capture,
-  node_error_passive,
-  node_error_active,
-  rx_message_counter,
+  output reg         rx_idle,
+  output reg         transmitting,
+  output reg         transmitter,
+  output wire        go_rx_inter,
+  output wire        not_first_bit_of_inter,
+  output reg         rx_inter,
+  output wire        set_reset_mode,
+  output reg         node_bus_off,
+  output wire        error_status,
+  output reg   [8:0] rx_err_cnt,
+  output reg   [8:0] tx_err_cnt,
+  output wire        transmit_status,
+  output wire        receive_status,
+  output wire        tx_successful,
+  output reg         need_to_tx,
+  output wire        overrun,
+  output wire        info_empty,
+  output wire        set_bus_error_irq,
+  output wire        set_arbitration_lost_irq,
+  output reg   [4:0] arbitration_lost_capture,
+  output wire        node_error_passive,
+  output wire        node_error_active,
+  output wire  [6:0] rx_message_counter,
 
   /* This section is for BASIC and EXTENDED mode */
   /* Acceptance code register */
-  acceptance_code_0,
+  input  wire  [7:0] acceptance_code_0,
 
   /* Acceptance mask register */
-  acceptance_mask_0,
+  input  wire  [7:0] acceptance_mask_0,
   /* End: This section is for BASIC and EXTENDED mode */
-  
+
   /* This section is for EXTENDED mode */
   /* Acceptance code register */
-  acceptance_code_1,
-  acceptance_code_2,
-  acceptance_code_3,
+  input  wire  [7:0] acceptance_code_1,
+  input  wire  [7:0] acceptance_code_2,
+  input  wire  [7:0] acceptance_code_3,
 
   /* Acceptance mask register */
-  acceptance_mask_1,
-  acceptance_mask_2,
-  acceptance_mask_3,
+  input  wire  [7:0] acceptance_mask_1,
+  input  wire  [7:0] acceptance_mask_2,
+  input  wire  [7:0] acceptance_mask_3,
   /* End: This section is for EXTENDED mode */
-  
-  /* Tx data registers. Holding identifier (basic mode), tx frame information (extended mode) and data */
-  tx_data_0,
-  tx_data_1,
-  tx_data_2,
-  tx_data_3,
-  tx_data_4,
-  tx_data_5,
-  tx_data_6,
-  tx_data_7,
-  tx_data_8,
-  tx_data_9,
-  tx_data_10,
-  tx_data_11,
-  tx_data_12,
-  /* End: Tx data registers */
-  
-  /* Tx signal */
-  tx,
-  tx_next,
-  bus_off_on,
 
-  go_overload_frame,
-  go_error_frame,
-  go_tx,
-  send_ack
+  /* Tx data registers. Holding identifier (basic mode), tx frame information (extended mode) and data */
+  input  wire  [7:0] tx_data_0,
+  input  wire  [7:0] tx_data_1,
+  input  wire  [7:0] tx_data_2,
+  input  wire  [7:0] tx_data_3,
+  input  wire  [7:0] tx_data_4,
+  input  wire  [7:0] tx_data_5,
+  input  wire  [7:0] tx_data_6,
+  input  wire  [7:0] tx_data_7,
+  input  wire  [7:0] tx_data_8,
+  input  wire  [7:0] tx_data_9,
+  input  wire  [7:0] tx_data_10,
+  input  wire  [7:0] tx_data_11,
+  input  wire  [7:0] tx_data_12,
+  /* End: Tx data registers */
+
+  /* Tx signal */
+  output reg         tx,
+  output reg         tx_next,
+  output wire        bus_off_on,
+
+  output wire        go_overload_frame,
+  output wire        go_error_frame,
+  output wire        go_tx,
+  output wire        send_ack
 
   /* Bist */
 `ifdef CAN_BIST
   ,
-  mbist_si_i,
-  mbist_so_o,
-  mbist_ctrl_i
+  input  wire        mbist_si_i,
+  output wire        mbist_so_o,
+  input  wire  [`CAN_MBIST_CTRL_WIDTH - 1:0] mbist_ctrl_i       // bist chain shift control
 `endif
 );
 
 parameter Tp = 1;
-
-input         clk;
-input         rst;
-input         sample_point;
-input         sampled_bit;
-input         sampled_bit_q;
-input         tx_point;
-input         hard_sync;
-input   [7:0] addr;
-input   [7:0] data_in;
-output  [7:0] data_out;
-input         fifo_selected;
-`ifdef CAN_FD_TOLERANT
-input         rx_sync_i;
-output        go_rx_skip_fdf_o;
-output        fdf_o;
-`endif
-
-input         reset_mode;
-input         listen_only_mode;
-input         acceptance_filter_mode;
-input         extended_mode;
-input         self_test_mode;
-
-/* Command register */
-input         release_buffer;
-input         tx_request;
-input         abort_tx;
-input         self_rx_request;
-input         single_shot_transmission;
-output        tx_state;
-output        tx_state_q;
-input         overload_request;     // When receiver is busy, it needs to send overload frame. Only 2 overload frames are allowed to
-output        overload_frame;       // be send in a row. This is not implemented, yet,  because host can not send an overload request.
-
-/* Arbitration Lost Capture Register */
-input         read_arbitration_lost_capture_reg;
-
-/* Error Code Capture Register */
-input         read_error_code_capture_reg;
-output  [7:0] error_capture_code;
-
-/* Error Warning Limit register */
-input   [7:0] error_warning_limit;
-
-/* Rx Error Counter register */
-input         we_rx_err_cnt;
-
-/* Tx Error Counter register */
-input         we_tx_err_cnt;
-
-output        rx_idle;
-output        transmitting;
-output        transmitter;
-output        go_rx_inter;
-output        not_first_bit_of_inter;
-output        rx_inter;
-output        set_reset_mode;
-output        node_bus_off;
-output        error_status;
-output  [8:0] rx_err_cnt;
-output  [8:0] tx_err_cnt;
-output        transmit_status;
-output        receive_status;
-output        tx_successful;
-output        need_to_tx;
-output        overrun;
-output        info_empty;
-output        set_bus_error_irq;
-output        set_arbitration_lost_irq;
-output  [4:0] arbitration_lost_capture;
-output        node_error_passive;
-output        node_error_active;
-output  [6:0] rx_message_counter;
-
-
-/* This section is for BASIC and EXTENDED mode */
-/* Acceptance code register */
-input   [7:0] acceptance_code_0;
-
-/* Acceptance mask register */
-input   [7:0] acceptance_mask_0;
-
-/* End: This section is for BASIC and EXTENDED mode */
-
-
-/* This section is for EXTENDED mode */
-/* Acceptance code register */
-input   [7:0] acceptance_code_1;
-input   [7:0] acceptance_code_2;
-input   [7:0] acceptance_code_3;
-
-/* Acceptance mask register */
-input   [7:0] acceptance_mask_1;
-input   [7:0] acceptance_mask_2;
-input   [7:0] acceptance_mask_3;
-/* End: This section is for EXTENDED mode */
-
-/* Tx data registers. Holding identifier (basic mode), tx frame information (extended mode) and data */
-input   [7:0] tx_data_0;
-input   [7:0] tx_data_1;
-input   [7:0] tx_data_2;
-input   [7:0] tx_data_3;
-input   [7:0] tx_data_4;
-input   [7:0] tx_data_5;
-input   [7:0] tx_data_6;
-input   [7:0] tx_data_7;
-input   [7:0] tx_data_8;
-input   [7:0] tx_data_9;
-input   [7:0] tx_data_10;
-input   [7:0] tx_data_11;
-input   [7:0] tx_data_12;
-/* End: Tx data registers */
-
-/* Tx signal */
-output        tx;
-output        tx_next;
-output        bus_off_on;
-
-output        go_overload_frame;
-output        go_error_frame;
-output        go_tx;
-output        send_ack;
-
-/* Bist */
-`ifdef CAN_BIST
-input         mbist_si_i;
-output        mbist_so_o;
-input [`CAN_MBIST_CTRL_WIDTH - 1:0] mbist_ctrl_i;       // bist chain shift control
-`endif
 
 reg           reset_mode_q;
 reg     [5:0] bit_cnt;
@@ -2539,4 +2408,3 @@ end
 
 
 endmodule
-
