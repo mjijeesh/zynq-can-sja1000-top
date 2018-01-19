@@ -2438,11 +2438,15 @@ begin
 end
 
 
+
 always @ (posedge clk or posedge rst)
 begin
   if (rst)
     bus_free_cnt_en <= 1'b0;
-  else if ((~reset_mode) & reset_mode_q | node_bus_off_q & (~reset_mode))
+  // MJ: the `(node_bus_off_q & (~reset_mode))` seems extraneous:
+  // - we are not in reset for a long time and we were bus_off the previous cycle
+  // BUT AFAIK that's impossible, because that would set reset_mode=1 in this cycle
+  else if ((~reset_mode) & reset_mode_q | (node_bus_off_q & (~reset_mode))) // XXX mod
     bus_free_cnt_en <=#Tp 1'b1;
   else if (sample_point & sampled_bit & (bus_free_cnt==4'd10) & (~node_bus_off))
     bus_free_cnt_en <=#Tp 1'b0;
@@ -2453,7 +2457,7 @@ always @ (posedge clk or posedge rst)
 begin
   if (rst)
     bus_free <= 1'b0;
-  else if (sample_point & sampled_bit & (bus_free_cnt==4'd10) && waiting_for_bus_free)
+  else if (sample_point & sampled_bit & (bus_free_cnt==4'd10) & waiting_for_bus_free)
     bus_free <=#Tp 1'b1;
   else
     bus_free <=#Tp 1'b0;
@@ -2477,6 +2481,13 @@ assign set_reset_mode = node_bus_off & (~node_bus_off_q);
 assign error_status = extended_mode? ((rx_err_cnt >= error_warning_limit) | (tx_err_cnt >= error_warning_limit))    :
                                      ((rx_err_cnt >= 9'd96) | (tx_err_cnt >= 9'd96))                                ;
 
+/*
+Extended mode:
+If both the receive status and the transmit status bits are logic 0 (idle) the CAN-bus is idle. If both bits are set the
+controller is waiting to become idle again. After a hardware reset 11 consecutive recessive bits have to be detected
+until the idle status is reached. After bus-off this will take 128 of 11 consecutive recessive bits.
+(SJA1000, 6.4., SR, Note 3)
+*/
 assign transmit_status = transmitting  || (extended_mode && waiting_for_bus_free);
 assign receive_status  = extended_mode ? (waiting_for_bus_free || (!rx_idle) && (!transmitting)) : 
                                          ((!waiting_for_bus_free) && (!rx_idle) && (!transmitting));
