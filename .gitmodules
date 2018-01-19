@@ -1,3 +1,9 @@
 [submodule "can-benchmark"]
 	path = can-benchmark
 	url = git@rtime.felk.cvut.cz:/can-benchmark.git
+[submodule "modules/zlogan"]
+	path = modules/zlogan
+	url = https://github.com/eltvor/zlogan
+[submodule "modules/udmabuf"]
+	path = modules/udmabuf
+	url = https://github.com/ikwzm/udmabuf
