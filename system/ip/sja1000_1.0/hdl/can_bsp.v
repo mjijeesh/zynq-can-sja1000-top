@@ -2466,7 +2466,7 @@ begin
     waiting_for_bus_free <= 1'b1;
   else if (bus_free & (~node_bus_off))
     waiting_for_bus_free <=#Tp 1'b0;
-  else if (node_bus_off_q & (~reset_mode))
+  else if (reset_mode_q & ~reset_mode)
     waiting_for_bus_free <=#Tp 1'b1;
 end
 
