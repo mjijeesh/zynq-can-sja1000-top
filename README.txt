@@ -3,10 +3,11 @@ CAN benchmark FPGA design and software for MicroZed board.
 Building
 ========
 
-1. Build Hardware Description File (system.hdf)
+0. Fetch git submodules
 
-The compiled system.hdf file is itself versioned so if you did not modify
-the system configuration, you do not have to build it.
+  $ git submodule update --init
+
+1. Build Hardware Description File (system.hdf)
 
 1.1 Recreate the Vivado project
 
