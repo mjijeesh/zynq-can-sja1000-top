@@ -7,3 +7,6 @@
 [submodule "modules/udmabuf"]
 	path = modules/udmabuf
 	url = https://github.com/ikwzm/udmabuf
+[submodule "modules/sja1000"]
+	path = modules/sja1000
+	url = https://gitlab.fel.cvut.cz/canbus/zynq/sja1000-fdtol.git
