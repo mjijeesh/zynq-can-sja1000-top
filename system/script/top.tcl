@@ -122,20 +122,14 @@ set bCheckIPsPassed 1
 set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
-user.org:user:audio_single_pwm:1.0\
-xilinx.com:ip:axi_dma:7.1\
-user.org:user:axi_pwm_coprocessor:1.0\
-xilinx.com:ip:axis_data_fifo:1.1\
+user.org:user:CTU_CAN_FD:1.0\
+xilinx.com:ip:c_counter_binary:12.0\
 pikron.com:user:can4x_to_pmod12_pins:1.0\
 user.org:user:canbench_cc_gpio:1.0\
-user.org:user:display_16bit_cmd_data_bus:1.0\
 xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:proc_sys_reset:5.0\
-user.org:user:servo_led_ps2:1.0\
 user.org:user:sja1000:1.0\
-user.org:user:spi_leds_and_enc:1.0\
 xilinx.com:ip:xlconcat:2.1\
-Eltvor:user:zlogan_capt:1.0\
 "
 
    set list_ips_missing ""
@@ -207,63 +201,35 @@ proc create_root_design { parentCell } {
   set CAN1_TXD [ create_bd_port -dir O CAN1_TXD ]
   set CAN2_RXD [ create_bd_port -dir I CAN2_RXD ]
   set CAN2_TXD [ create_bd_port -dir O CAN2_TXD ]
-  set ENCDATA [ create_bd_port -dir I ENCDATA ]
   set FPGA_IO_A [ create_bd_port -dir IO -from 10 -to 1 FPGA_IO_A ]
   set FPGA_IO_B [ create_bd_port -dir IO -from 28 -to 13 FPGA_IO_B ]
   set FPGA_IO_C [ create_bd_port -dir IO -from 40 -to 31 FPGA_IO_C ]
-  set LCD_CS [ create_bd_port -dir O LCD_CS ]
-  set LCD_D [ create_bd_port -dir IO -from 15 -to 0 -type data LCD_D ]
-  set LCD_RS [ create_bd_port -dir O LCD_RS ]
-  set LCD_RST [ create_bd_port -dir O LCD_RST ]
-  set LCD_WR [ create_bd_port -dir O LCD_WR ]
-  set LEDCLK [ create_bd_port -dir O LEDCLK ]
-  set LEDCS [ create_bd_port -dir O LEDCS ]
-  set LEDDATA [ create_bd_port -dir O LEDDATA ]
-  set RESET [ create_bd_port -dir O RESET ]
-  set SERVO1 [ create_bd_port -dir O SERVO1 ]
-  set SERVO2 [ create_bd_port -dir O SERVO2 ]
-  set SERVO3 [ create_bd_port -dir O SERVO3 ]
-  set SERVO4 [ create_bd_port -dir IO SERVO4 ]
-  set SPEAKER [ create_bd_port -dir O SPEAKER ]
 
-  # Create instance: audio_single_pwm_0, and set properties
-  set audio_single_pwm_0 [ create_bd_cell -type ip -vlnv user.org:user:audio_single_pwm:1.0 audio_single_pwm_0 ]
+  # Create instance: CTU_CAN_FD_0, and set properties
+  set CTU_CAN_FD_0 [ create_bd_cell -type ip -vlnv user.org:user:CTU_CAN_FD:1.0 CTU_CAN_FD_0 ]
 
-  # Create instance: axi_dma_1, and set properties
-  set axi_dma_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma_1 ]
+  # Create instance: CTU_CAN_FD_1, and set properties
+  set CTU_CAN_FD_1 [ create_bd_cell -type ip -vlnv user.org:user:CTU_CAN_FD:1.0 CTU_CAN_FD_1 ]
+
+  # Create instance: CTU_CAN_FD_2, and set properties
+  set CTU_CAN_FD_2 [ create_bd_cell -type ip -vlnv user.org:user:CTU_CAN_FD:1.0 CTU_CAN_FD_2 ]
+
+  # Create instance: CTU_CAN_FD_3, and set properties
+  set CTU_CAN_FD_3 [ create_bd_cell -type ip -vlnv user.org:user:CTU_CAN_FD:1.0 CTU_CAN_FD_3 ]
+
+  # Create instance: c_counter_binary_0, and set properties
+  set c_counter_binary_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:c_counter_binary:12.0 c_counter_binary_0 ]
   set_property -dict [ list \
-   CONFIG.c_addr_width {32} \
-   CONFIG.c_enable_multi_channel {0} \
-   CONFIG.c_include_mm2s {0} \
-   CONFIG.c_include_sg {0} \
-   CONFIG.c_m_axi_mm2s_data_width {32} \
-   CONFIG.c_m_axis_mm2s_tdata_width {32} \
-   CONFIG.c_micro_dma {0} \
-   CONFIG.c_mm2s_burst_size {16} \
-   CONFIG.c_sg_include_stscntrl_strm {0} \
-   CONFIG.c_sg_length_width {23} \
- ] $axi_dma_1
-
-  # Create instance: axi_interconnect_0, and set properties
-  set axi_interconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0 ]
-  set_property -dict [ list \
-   CONFIG.NUM_MI {1} \
- ] $axi_interconnect_0
-
-  # Create instance: axi_pwm_coprocessor_0, and set properties
-  set axi_pwm_coprocessor_0 [ create_bd_cell -type ip -vlnv user.org:user:axi_pwm_coprocessor:1.0 axi_pwm_coprocessor_0 ]
-
-  # Create instance: axis_data_fifo_0, and set properties
-  set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:1.1 axis_data_fifo_0 ]
+   CONFIG.Load {false} \
+   CONFIG.Output_Width {64} \
+   CONFIG.Sync_Threshold_Output {false} \
+ ] $c_counter_binary_0
 
   # Create instance: can4x_to_pmod12_pins_0, and set properties
   set can4x_to_pmod12_pins_0 [ create_bd_cell -type ip -vlnv pikron.com:user:can4x_to_pmod12_pins:1.0 can4x_to_pmod12_pins_0 ]
 
   # Create instance: canbench_cc_gpio_0, and set properties
   set canbench_cc_gpio_0 [ create_bd_cell -type ip -vlnv user.org:user:canbench_cc_gpio:1.0 canbench_cc_gpio_0 ]
-
-  # Create instance: display_16bit_cmd_data_bus_0, and set properties
-  set display_16bit_cmd_data_bus_0 [ create_bd_cell -type ip -vlnv user.org:user:display_16bit_cmd_data_bus:1.0 display_16bit_cmd_data_bus_0 ]
 
   # Create instance: processing_system7_0, and set properties
   set processing_system7_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 processing_system7_0 ]
@@ -1078,16 +1044,11 @@ proc create_root_design { parentCell } {
   # Create instance: ps7_0_axi_periph, and set properties
   set ps7_0_axi_periph [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 ps7_0_axi_periph ]
   set_property -dict [ list \
-   CONFIG.ENABLE_ADVANCED_OPTIONS {0} \
-   CONFIG.NUM_MI {11} \
-   CONFIG.NUM_SI {5} \
+   CONFIG.NUM_MI {6} \
  ] $ps7_0_axi_periph
 
   # Create instance: rst_processing_system7_0_100M, and set properties
   set rst_processing_system7_0_100M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_processing_system7_0_100M ]
-
-  # Create instance: servo_led_ps2_0, and set properties
-  set servo_led_ps2_0 [ create_bd_cell -type ip -vlnv user.org:user:servo_led_ps2:1.0 servo_led_ps2_0 ]
 
   # Create instance: sja1000_0, and set properties
   set sja1000_0 [ create_bd_cell -type ip -vlnv user.org:user:sja1000:1.0 sja1000_0 ]
@@ -1099,157 +1060,61 @@ proc create_root_design { parentCell } {
   # Create instance: sja1000_1, and set properties
   set sja1000_1 [ create_bd_cell -type ip -vlnv user.org:user:sja1000:1.0 sja1000_1 ]
 
-  # Create instance: sja1000_2, and set properties
-  set sja1000_2 [ create_bd_cell -type ip -vlnv user.org:user:sja1000:1.0 sja1000_2 ]
-
-  # Create instance: sja1000_3, and set properties
-  set sja1000_3 [ create_bd_cell -type ip -vlnv user.org:user:sja1000:1.0 sja1000_3 ]
-
-  # Create instance: spi_leds_and_enc_0, and set properties
-  set spi_leds_and_enc_0 [ create_bd_cell -type ip -vlnv user.org:user:spi_leds_and_enc:1.0 spi_leds_and_enc_0 ]
-
   # Create instance: xlconcat_0, and set properties
   set xlconcat_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 xlconcat_0 ]
   set_property -dict [ list \
    CONFIG.NUM_PORTS {6} \
  ] $xlconcat_0
 
-  # Create instance: zlogan_capt_0, and set properties
-  set zlogan_capt_0 [ create_bd_cell -type ip -vlnv Eltvor:user:zlogan_capt:1.0 zlogan_capt_0 ]
-  set_property -dict [ list \
-   CONFIG.C_M00_AXIS_TDATA_WIDTH {64} \
-   CONFIG.la_b_out {8} \
-   CONFIG.la_n_inp {32} \
- ] $zlogan_capt_0
-
-  set_property -dict [ list \
-   CONFIG.TDATA_NUM_BYTES {8} \
-   CONFIG.HAS_TSTRB {1} \
- ] [get_bd_intf_pins /zlogan_capt_0/M00_AXIS]
-
-  set_property -dict [ list \
-   CONFIG.NUM_READ_OUTSTANDING {1} \
-   CONFIG.NUM_WRITE_OUTSTANDING {1} \
- ] [get_bd_intf_pins /zlogan_capt_0/S00_AXI]
-
   # Create interface connections
-  connect_bd_intf_net -intf_net audio_single_pwm_0_M00_AXI [get_bd_intf_pins audio_single_pwm_0/M00_AXI] [get_bd_intf_pins ps7_0_axi_periph/S02_AXI]
-  connect_bd_intf_net -intf_net axi_dma_1_M_AXI_S2MM [get_bd_intf_pins axi_dma_1/M_AXI_S2MM] [get_bd_intf_pins axi_interconnect_0/S00_AXI]
-  connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_0/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP0]
-  connect_bd_intf_net -intf_net axi_pwm_coprocessor_0_M00_AXI [get_bd_intf_pins axi_pwm_coprocessor_0/M00_AXI] [get_bd_intf_pins ps7_0_axi_periph/S01_AXI]
-  connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_pins axi_dma_1/S_AXIS_S2MM] [get_bd_intf_pins axis_data_fifo_0/M_AXIS]
-  connect_bd_intf_net -intf_net display_16bit_cmd_data_bus_0_M00_AXI [get_bd_intf_pins display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_intf_pins ps7_0_axi_periph/S03_AXI]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
   connect_bd_intf_net -intf_net processing_system7_0_M_AXI_GP0 [get_bd_intf_pins processing_system7_0/M_AXI_GP0] [get_bd_intf_pins ps7_0_axi_periph/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M00_AXI [get_bd_intf_pins axi_pwm_coprocessor_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins ps7_0_axi_periph/M01_AXI] [get_bd_intf_pins servo_led_ps2_0/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M02_AXI [get_bd_intf_pins ps7_0_axi_periph/M02_AXI] [get_bd_intf_pins spi_leds_and_enc_0/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M03_AXI [get_bd_intf_pins audio_single_pwm_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M03_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M04_AXI [get_bd_intf_pins display_16bit_cmd_data_bus_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M04_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M05_AXI [get_bd_intf_pins ps7_0_axi_periph/M05_AXI] [get_bd_intf_pins sja1000_2/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M06_AXI [get_bd_intf_pins ps7_0_axi_periph/M06_AXI] [get_bd_intf_pins sja1000_3/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M07_AXI [get_bd_intf_pins ps7_0_axi_periph/M07_AXI] [get_bd_intf_pins sja1000_0/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M08_AXI [get_bd_intf_pins ps7_0_axi_periph/M08_AXI] [get_bd_intf_pins sja1000_1/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M09_AXI [get_bd_intf_pins ps7_0_axi_periph/M09_AXI] [get_bd_intf_pins zlogan_capt_0/S00_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M10_AXI [get_bd_intf_pins axi_dma_1/S_AXI_LITE] [get_bd_intf_pins ps7_0_axi_periph/M10_AXI]
-  connect_bd_intf_net -intf_net zlogan_capt_0_M00_AXIS [get_bd_intf_pins axis_data_fifo_0/S_AXIS] [get_bd_intf_pins zlogan_capt_0/M00_AXIS]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M00_AXI [get_bd_intf_pins ps7_0_axi_periph/M00_AXI] [get_bd_intf_pins sja1000_0/S00_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins ps7_0_axi_periph/M01_AXI] [get_bd_intf_pins sja1000_1/S00_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M02_AXI [get_bd_intf_pins CTU_CAN_FD_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M02_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M03_AXI [get_bd_intf_pins CTU_CAN_FD_1/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M03_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M04_AXI [get_bd_intf_pins CTU_CAN_FD_2/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M04_AXI]
+  connect_bd_intf_net -intf_net ps7_0_axi_periph_M05_AXI [get_bd_intf_pins CTU_CAN_FD_3/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M05_AXI]
 
   # Create port connections
   connect_bd_net -net CAN1_RXD_1 [get_bd_ports CAN1_RXD] [get_bd_pins sja1000_0/can_rx]
-  connect_bd_net -net CAN2_RXD_1 [get_bd_ports CAN2_RXD] [get_bd_pins processing_system7_0/CAN0_PHY_RX]
-  connect_bd_net -net ENCDATA_1 [get_bd_ports ENCDATA] [get_bd_pins spi_leds_and_enc_0/spi_led_encin]
-  connect_bd_net -net Net [get_bd_ports SERVO4] [get_bd_pins servo_led_ps2_0/SERVO4]
-  connect_bd_net -net Net1 [get_bd_ports LCD_D] [get_bd_pins display_16bit_cmd_data_bus_0/lcd_data]
+  connect_bd_net -net CAN2_RXD_1 [get_bd_ports CAN2_RXD] [get_bd_pins sja1000_1/can_rx]
+  connect_bd_net -net CTU_CAN_FD_0_CAN_tx [get_bd_pins CTU_CAN_FD_0/CAN_tx] [get_bd_pins can4x_to_pmod12_pins_0/CAN1_TX]
+  connect_bd_net -net CTU_CAN_FD_0_irq [get_bd_pins CTU_CAN_FD_0/irq] [get_bd_pins xlconcat_0/In0]
+  connect_bd_net -net CTU_CAN_FD_1_CAN_tx [get_bd_pins CTU_CAN_FD_1/CAN_tx] [get_bd_pins can4x_to_pmod12_pins_0/CAN2_TX]
+  connect_bd_net -net CTU_CAN_FD_1_irq [get_bd_pins CTU_CAN_FD_1/irq] [get_bd_pins xlconcat_0/In1]
+  connect_bd_net -net CTU_CAN_FD_2_CAN_tx [get_bd_pins CTU_CAN_FD_2/CAN_tx] [get_bd_pins can4x_to_pmod12_pins_0/CAN3_TX]
+  connect_bd_net -net CTU_CAN_FD_2_irq [get_bd_pins CTU_CAN_FD_2/irq] [get_bd_pins xlconcat_0/In2]
+  connect_bd_net -net CTU_CAN_FD_3_CAN_tx [get_bd_pins CTU_CAN_FD_3/CAN_tx] [get_bd_pins can4x_to_pmod12_pins_0/CAN4_TX]
+  connect_bd_net -net CTU_CAN_FD_3_irq [get_bd_pins CTU_CAN_FD_3/irq] [get_bd_pins xlconcat_0/In3]
   connect_bd_net -net Net2 [get_bd_ports FPGA_IO_A] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_A]
   connect_bd_net -net Net3 [get_bd_ports FPGA_IO_B] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_B]
   connect_bd_net -net Net4 [get_bd_ports FPGA_IO_C] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_C]
-  connect_bd_net -net audio_single_pwm_0_irq_rq_out [get_bd_pins audio_single_pwm_0/irq_rq_out] [get_bd_pins xlconcat_0/In0]
-  connect_bd_net -net audio_single_pwm_0_speaker_pwm_out [get_bd_ports SPEAKER] [get_bd_pins audio_single_pwm_0/speaker_pwm_out]
-  connect_bd_net -net axis_data_fifo_0_axis_data_count [get_bd_pins axis_data_fifo_0/axis_data_count] [get_bd_pins zlogan_capt_0/fifo_data_count_i]
-  connect_bd_net -net axis_data_fifo_0_axis_rd_data_count [get_bd_pins axis_data_fifo_0/axis_rd_data_count] [get_bd_pins zlogan_capt_0/fifo_rd_data_count_i]
-  connect_bd_net -net axis_data_fifo_0_axis_wr_data_count [get_bd_pins axis_data_fifo_0/axis_wr_data_count] [get_bd_pins zlogan_capt_0/fifo_wr_data_count_i]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN1_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN1_RX] [get_bd_pins sja1000_1/can_rx]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN2_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN2_RX] [get_bd_pins processing_system7_0/CAN1_PHY_RX]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN3_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN3_RX] [get_bd_pins sja1000_2/can_rx]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN4_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN4_RX] [get_bd_pins sja1000_3/can_rx]
+  connect_bd_net -net c_counter_binary_0_Q [get_bd_pins CTU_CAN_FD_0/timestamp] [get_bd_pins CTU_CAN_FD_1/timestamp] [get_bd_pins CTU_CAN_FD_2/timestamp] [get_bd_pins CTU_CAN_FD_3/timestamp] [get_bd_pins c_counter_binary_0/Q]
+  connect_bd_net -net can4x_to_pmod12_pins_0_CAN1_RX [get_bd_pins CTU_CAN_FD_0/CAN_rx] [get_bd_pins can4x_to_pmod12_pins_0/CAN1_RX]
+  connect_bd_net -net can4x_to_pmod12_pins_0_CAN2_RX [get_bd_pins CTU_CAN_FD_1/CAN_rx] [get_bd_pins can4x_to_pmod12_pins_0/CAN2_RX]
+  connect_bd_net -net can4x_to_pmod12_pins_0_CAN3_RX [get_bd_pins CTU_CAN_FD_2/CAN_rx] [get_bd_pins can4x_to_pmod12_pins_0/CAN3_RX]
+  connect_bd_net -net can4x_to_pmod12_pins_0_CAN4_RX [get_bd_pins CTU_CAN_FD_3/CAN_rx] [get_bd_pins can4x_to_pmod12_pins_0/CAN4_RX]
   connect_bd_net -net canbench_cc_gpio_0_GPIO_I [get_bd_pins canbench_cc_gpio_0/GPIO_I] [get_bd_pins processing_system7_0/GPIO_I]
-  connect_bd_net -net display_16bit_cmd_data_bus_0_irq_rq_out [get_bd_pins display_16bit_cmd_data_bus_0/irq_rq_out] [get_bd_pins xlconcat_0/In1]
-  connect_bd_net -net display_16bit_cmd_data_bus_0_lcd_cs_n [get_bd_ports LCD_CS] [get_bd_pins display_16bit_cmd_data_bus_0/lcd_cs_n]
-  connect_bd_net -net display_16bit_cmd_data_bus_0_lcd_dc [get_bd_ports LCD_RS] [get_bd_pins display_16bit_cmd_data_bus_0/lcd_dc]
-  connect_bd_net -net display_16bit_cmd_data_bus_0_lcd_res_n [get_bd_ports LCD_RST] [get_bd_pins display_16bit_cmd_data_bus_0/lcd_res_n]
-  connect_bd_net -net display_16bit_cmd_data_bus_0_lcd_wr_n [get_bd_ports LCD_WR] [get_bd_pins display_16bit_cmd_data_bus_0/lcd_wr_n]
-  connect_bd_net -net processing_system7_0_CAN0_PHY_TX [get_bd_ports CAN2_TXD] [get_bd_pins processing_system7_0/CAN0_PHY_TX]
-  connect_bd_net -net processing_system7_0_CAN1_PHY_TX [get_bd_pins can4x_to_pmod12_pins_0/CAN2_TX] [get_bd_pins processing_system7_0/CAN1_PHY_TX]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins audio_single_pwm_0/m00_axi_aclk] [get_bd_pins audio_single_pwm_0/s00_axi_aclk] [get_bd_pins axi_dma_1/m_axi_s2mm_aclk] [get_bd_pins axi_dma_1/s_axi_lite_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_pwm_coprocessor_0/m00_axi_aclk] [get_bd_pins axi_pwm_coprocessor_0/s00_axi_aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins display_16bit_cmd_data_bus_0/m00_axi_aclk] [get_bd_pins display_16bit_cmd_data_bus_0/s00_axi_aclk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/M03_ACLK] [get_bd_pins ps7_0_axi_periph/M04_ACLK] [get_bd_pins ps7_0_axi_periph/M05_ACLK] [get_bd_pins ps7_0_axi_periph/M06_ACLK] [get_bd_pins ps7_0_axi_periph/M07_ACLK] [get_bd_pins ps7_0_axi_periph/M08_ACLK] [get_bd_pins ps7_0_axi_periph/M09_ACLK] [get_bd_pins ps7_0_axi_periph/M10_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins ps7_0_axi_periph/S01_ACLK] [get_bd_pins ps7_0_axi_periph/S02_ACLK] [get_bd_pins ps7_0_axi_periph/S03_ACLK] [get_bd_pins ps7_0_axi_periph/S04_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins servo_led_ps2_0/s00_axi_aclk] [get_bd_pins sja1000_0/can_clk] [get_bd_pins sja1000_0/s00_axi_aclk] [get_bd_pins sja1000_1/can_clk] [get_bd_pins sja1000_1/s00_axi_aclk] [get_bd_pins sja1000_2/can_clk] [get_bd_pins sja1000_2/s00_axi_aclk] [get_bd_pins sja1000_3/can_clk] [get_bd_pins sja1000_3/s00_axi_aclk] [get_bd_pins spi_leds_and_enc_0/s00_axi_aclk] [get_bd_pins zlogan_capt_0/la_clock] [get_bd_pins zlogan_capt_0/m00_axis_aclk] [get_bd_pins zlogan_capt_0/s00_axi_aclk]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins CTU_CAN_FD_0/s00_axi_aclk] [get_bd_pins CTU_CAN_FD_1/s00_axi_aclk] [get_bd_pins CTU_CAN_FD_2/s00_axi_aclk] [get_bd_pins CTU_CAN_FD_3/s00_axi_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/M03_ACLK] [get_bd_pins ps7_0_axi_periph/M04_ACLK] [get_bd_pins ps7_0_axi_periph/M05_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/can_clk] [get_bd_pins sja1000_0/s00_axi_aclk] [get_bd_pins sja1000_1/can_clk] [get_bd_pins sja1000_1/s00_axi_aclk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_processing_system7_0_100M/ext_reset_in]
   connect_bd_net -net processing_system7_0_GPIO_O [get_bd_pins canbench_cc_gpio_0/GPIO_O] [get_bd_pins processing_system7_0/GPIO_O]
-  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins audio_single_pwm_0/m00_axi_aresetn] [get_bd_pins audio_single_pwm_0/s00_axi_aresetn] [get_bd_pins axi_dma_1/axi_resetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_pwm_coprocessor_0/m00_axi_aresetn] [get_bd_pins axi_pwm_coprocessor_0/s00_axi_aresetn] [get_bd_pins display_16bit_cmd_data_bus_0/m00_axi_aresetn] [get_bd_pins display_16bit_cmd_data_bus_0/s00_axi_aresetn] [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/M03_ARESETN] [get_bd_pins ps7_0_axi_periph/M04_ARESETN] [get_bd_pins ps7_0_axi_periph/M05_ARESETN] [get_bd_pins ps7_0_axi_periph/M06_ARESETN] [get_bd_pins ps7_0_axi_periph/M07_ARESETN] [get_bd_pins ps7_0_axi_periph/M08_ARESETN] [get_bd_pins ps7_0_axi_periph/M09_ARESETN] [get_bd_pins ps7_0_axi_periph/M10_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins ps7_0_axi_periph/S01_ARESETN] [get_bd_pins ps7_0_axi_periph/S02_ARESETN] [get_bd_pins ps7_0_axi_periph/S03_ARESETN] [get_bd_pins ps7_0_axi_periph/S04_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins servo_led_ps2_0/s00_axi_aresetn] [get_bd_pins sja1000_0/s00_axi_aresetn] [get_bd_pins sja1000_1/s00_axi_aresetn] [get_bd_pins sja1000_2/s00_axi_aresetn] [get_bd_pins sja1000_3/s00_axi_aresetn] [get_bd_pins spi_leds_and_enc_0/s00_axi_aresetn] [get_bd_pins zlogan_capt_0/m00_axis_aresetn] [get_bd_pins zlogan_capt_0/s00_axi_aresetn]
-  connect_bd_net -net servo_led_ps2_0_SERVO1 [get_bd_ports SERVO1] [get_bd_pins servo_led_ps2_0/SERVO1]
-  connect_bd_net -net servo_led_ps2_0_SERVO2 [get_bd_ports SERVO2] [get_bd_pins servo_led_ps2_0/SERVO2]
-  connect_bd_net -net servo_led_ps2_0_SERVO3 [get_bd_ports SERVO3] [get_bd_pins servo_led_ps2_0/SERVO3]
+  connect_bd_net -net rst_processing_system7_0_100M_interconnect_aresetn [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins rst_processing_system7_0_100M/interconnect_aresetn]
+  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/s00_axi_aresetn] [get_bd_pins CTU_CAN_FD_1/s00_axi_aresetn] [get_bd_pins CTU_CAN_FD_2/s00_axi_aresetn] [get_bd_pins CTU_CAN_FD_3/s00_axi_aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/M03_ARESETN] [get_bd_pins ps7_0_axi_periph/M04_ARESETN] [get_bd_pins ps7_0_axi_periph/M05_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/s00_axi_aresetn] [get_bd_pins sja1000_1/s00_axi_aresetn]
   connect_bd_net -net sja1000_0_can_tx [get_bd_ports CAN1_TXD] [get_bd_pins sja1000_0/can_tx]
-  connect_bd_net -net sja1000_0_dbg_ports_o [get_bd_pins sja1000_0/dbg_ports_o] [get_bd_pins zlogan_capt_0/la_inp]
-  connect_bd_net -net sja1000_0_irq [get_bd_pins sja1000_0/irq] [get_bd_pins xlconcat_0/In2]
-  connect_bd_net -net sja1000_1_can_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN1_TX] [get_bd_pins sja1000_1/can_tx]
-  connect_bd_net -net sja1000_1_irq [get_bd_pins sja1000_1/irq] [get_bd_pins xlconcat_0/In3]
-  connect_bd_net -net sja1000_2_can_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN3_TX] [get_bd_pins sja1000_2/can_tx]
-  connect_bd_net -net sja1000_2_irq [get_bd_pins sja1000_2/irq] [get_bd_pins xlconcat_0/In4]
-  connect_bd_net -net sja1000_3_can_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN4_TX] [get_bd_pins sja1000_3/can_tx]
-  connect_bd_net -net sja1000_3_irq [get_bd_pins sja1000_3/irq] [get_bd_pins xlconcat_0/In5]
-  connect_bd_net -net spi_leds_and_enc_0_spi_led_clk [get_bd_ports LEDCLK] [get_bd_pins spi_leds_and_enc_0/spi_led_clk]
-  connect_bd_net -net spi_leds_and_enc_0_spi_led_cs [get_bd_ports LEDCS] [get_bd_pins spi_leds_and_enc_0/spi_led_cs]
-  connect_bd_net -net spi_leds_and_enc_0_spi_led_data [get_bd_ports LEDDATA] [get_bd_pins spi_leds_and_enc_0/spi_led_data]
-  connect_bd_net -net spi_leds_and_enc_0_spi_led_reset [get_bd_ports RESET] [get_bd_pins spi_leds_and_enc_0/spi_led_reset]
+  connect_bd_net -net sja1000_0_irq [get_bd_pins sja1000_0/irq] [get_bd_pins xlconcat_0/In4]
+  connect_bd_net -net sja1000_1_can_tx [get_bd_ports CAN2_TXD] [get_bd_pins sja1000_1/can_tx]
+  connect_bd_net -net sja1000_1_irq [get_bd_pins sja1000_1/irq] [get_bd_pins xlconcat_0/In5]
   connect_bd_net -net xlconcat_0_dout [get_bd_pins processing_system7_0/IRQ_F2P] [get_bd_pins xlconcat_0/dout]
-  connect_bd_net -net zlogan_capt_0_fifo_reset_n [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins zlogan_capt_0/fifo_reset_n]
 
   # Create address segments
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs audio_single_pwm_0/S00_AXI/S00_AXI_reg] SEG_audio_single_pwm_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs axi_dma_1/S_AXI_LITE/Reg] SEG_axi_dma_1_Reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C10000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs axi_pwm_coprocessor_0/S00_AXI/S00_AXI_reg] SEG_axi_pwm_coprocessor_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs display_16bit_cmd_data_bus_0/S00_AXI/S00_AXI_reg] SEG_display_16bit_cmd_data_bus_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C50000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs servo_led_ps2_0/S00_AXI/S00_AXI_reg] SEG_servo_led_ps2_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs sja1000_0/S00_AXI/S00_AXI_reg] SEG_sja1000_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs sja1000_1/S00_AXI/S00_AXI_reg] SEG_sja1000_1_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CA0000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs sja1000_2/S00_AXI/S00_AXI_reg] SEG_sja1000_2_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CB0000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs sja1000_3/S00_AXI/S00_AXI_reg] SEG_sja1000_3_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C40000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs spi_leds_and_enc_0/S00_AXI/S00_AXI_reg] SEG_spi_leds_and_enc_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C20000 [get_bd_addr_spaces audio_single_pwm_0/M00_AXI] [get_bd_addr_segs zlogan_capt_0/S00_AXI/S00_AXI_reg] SEG_zlogan_capt_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x20000000 -offset 0x00000000 [get_bd_addr_spaces axi_dma_1/Data_S2MM] [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] SEG_processing_system7_0_HP0_DDR_LOWOCM
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs audio_single_pwm_0/S00_AXI/S00_AXI_reg] SEG_audio_single_pwm_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs axi_dma_1/S_AXI_LITE/Reg] SEG_axi_dma_1_Reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C10000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs axi_pwm_coprocessor_0/S00_AXI/S00_AXI_reg] SEG_axi_pwm_coprocessor_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs display_16bit_cmd_data_bus_0/S00_AXI/S00_AXI_reg] SEG_display_16bit_cmd_data_bus_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C50000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs servo_led_ps2_0/S00_AXI/S00_AXI_reg] SEG_servo_led_ps2_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs sja1000_0/S00_AXI/S00_AXI_reg] SEG_sja1000_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs sja1000_1/S00_AXI/S00_AXI_reg] SEG_sja1000_1_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CA0000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs sja1000_2/S00_AXI/S00_AXI_reg] SEG_sja1000_2_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CB0000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs sja1000_3/S00_AXI/S00_AXI_reg] SEG_sja1000_3_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C40000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs spi_leds_and_enc_0/S00_AXI/S00_AXI_reg] SEG_spi_leds_and_enc_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C20000 [get_bd_addr_spaces axi_pwm_coprocessor_0/M00_AXI] [get_bd_addr_segs zlogan_capt_0/S00_AXI/S00_AXI_reg] SEG_zlogan_capt_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs audio_single_pwm_0/S00_AXI/S00_AXI_reg] SEG_audio_single_pwm_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs axi_dma_1/S_AXI_LITE/Reg] SEG_axi_dma_1_Reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C10000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs axi_pwm_coprocessor_0/S00_AXI/S00_AXI_reg] SEG_axi_pwm_coprocessor_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs display_16bit_cmd_data_bus_0/S00_AXI/S00_AXI_reg] SEG_display_16bit_cmd_data_bus_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C50000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs servo_led_ps2_0/S00_AXI/S00_AXI_reg] SEG_servo_led_ps2_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs sja1000_0/S00_AXI/S00_AXI_reg] SEG_sja1000_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs sja1000_1/S00_AXI/S00_AXI_reg] SEG_sja1000_1_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CA0000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs sja1000_2/S00_AXI/S00_AXI_reg] SEG_sja1000_2_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CB0000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs sja1000_3/S00_AXI/S00_AXI_reg] SEG_sja1000_3_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C40000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs spi_leds_and_enc_0/S00_AXI/S00_AXI_reg] SEG_spi_leds_and_enc_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C20000 [get_bd_addr_spaces display_16bit_cmd_data_bus_0/M00_AXI] [get_bd_addr_segs zlogan_capt_0/S00_AXI/S00_AXI_reg] SEG_zlogan_capt_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C60000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs audio_single_pwm_0/S00_AXI/S00_AXI_reg] SEG_audio_single_pwm_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_1/S_AXI_LITE/Reg] SEG_axi_dma_1_Reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C10000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_pwm_coprocessor_0/S00_AXI/S00_AXI_reg] SEG_axi_pwm_coprocessor_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs display_16bit_cmd_data_bus_0/S00_AXI/S00_AXI_reg] SEG_display_16bit_cmd_data_bus_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C50000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs servo_led_ps2_0/S00_AXI/S00_AXI_reg] SEG_servo_led_ps2_0_S00_AXI_reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C30000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_0/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_0_S00_AXI_reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C70000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_1/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_1_S00_AXI_reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_2/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_2_S00_AXI_reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C10000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_3/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_3_S00_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_0/S00_AXI/S00_AXI_reg] SEG_sja1000_0_S00_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_1/S00_AXI/S00_AXI_reg] SEG_sja1000_1_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CA0000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_2/S00_AXI/S00_AXI_reg] SEG_sja1000_2_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43CB0000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_3/S00_AXI/S00_AXI_reg] SEG_sja1000_3_S00_AXI_reg
-  create_bd_addr_seg -range 0x00001000 -offset 0x43C40000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs spi_leds_and_enc_0/S00_AXI/S00_AXI_reg] SEG_spi_leds_and_enc_0_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C20000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs zlogan_capt_0/S00_AXI/S00_AXI_reg] SEG_zlogan_capt_0_S00_AXI_reg
 
 
   # Restore current instance
@@ -1266,4 +1131,6 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
+
+common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
