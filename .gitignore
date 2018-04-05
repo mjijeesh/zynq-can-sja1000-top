@@ -1,3 +1,5 @@
 .Xil
 vivado*.log
 vivado*.jou
+*.o
+*.das
