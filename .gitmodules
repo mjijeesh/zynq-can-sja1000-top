@@ -13,3 +13,6 @@
 [submodule "modules/CTU_CAN_FD"]
 	path = modules/CTU_CAN_FD
 	url = https://gitlab.fel.cvut.cz/illeondr/CAN_FD_IP_Core.git
+[submodule "modules/device-tree-xlnx"]
+	path = modules/device-tree-xlnx
+	url = git://github.com/Xilinx/device-tree-xlnx.git

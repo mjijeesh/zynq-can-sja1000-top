@@ -24,5 +24,9 @@ petalinux_config: system/system.hdf
 	$(MAKE) -C petalinux config
 petalinux_build:
 	$(MAKE) -C petalinux build bootscript
+dts:
+	cd system/script && hsi -mode batch -nolog -nojournal -source gendevtree.tcl
+
+.PHONT: system_project petalinux_config petalinux_build dts
 
 FORCE:
