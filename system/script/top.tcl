@@ -125,7 +125,7 @@ if { $bCheckIPs == 1 } {
 user.org:user:CTU_CAN_FD:1.0\
 xilinx.com:ip:c_counter_binary:12.0\
 pikron.com:user:can4x_to_pmod12_pins:1.0\
-user.org:user:can_crossbar:1.0\
+user.org:user:can_merge:1.0\
 user.org:user:canbench_cc_gpio:1.0\
 xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:proc_sys_reset:5.0\
@@ -231,8 +231,8 @@ proc create_root_design { parentCell } {
   # Create instance: can4x_to_pmod12_pins_0, and set properties
   set can4x_to_pmod12_pins_0 [ create_bd_cell -type ip -vlnv pikron.com:user:can4x_to_pmod12_pins:1.0 can4x_to_pmod12_pins_0 ]
 
-  # Create instance: can_crossbar_0, and set properties
-  set can_crossbar_0 [ create_bd_cell -type ip -vlnv user.org:user:can_crossbar:1.0 can_crossbar_0 ]
+  # Create instance: can_merge_0, and set properties
+  set can_merge_0 [ create_bd_cell -type ip -vlnv user.org:user:can_merge:1.0 can_merge_0 ]
 
   # Create instance: canbench_cc_gpio_0, and set properties
   set canbench_cc_gpio_0 [ create_bd_cell -type ip -vlnv user.org:user:canbench_cc_gpio:1.0 canbench_cc_gpio_0 ]
@@ -1069,7 +1069,7 @@ proc create_root_design { parentCell } {
   # Create instance: xlconcat_0, and set properties
   set xlconcat_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 xlconcat_0 ]
   set_property -dict [ list \
-   CONFIG.NUM_PORTS {6} \
+   CONFIG.NUM_PORTS {4} \
  ] $xlconcat_0
 
   # Create interface connections
@@ -1080,45 +1080,32 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins ps7_0_axi_periph/M01_AXI] [get_bd_intf_pins sja1000_1/S00_AXI]
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M02_AXI [get_bd_intf_pins CTU_CAN_FD_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M02_AXI]
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M03_AXI [get_bd_intf_pins CTU_CAN_FD_1/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M03_AXI]
-  connect_bd_intf_net -intf_net ps7_0_axi_periph_M04_AXI [get_bd_intf_pins can_crossbar_0/S00_AXI] [get_bd_intf_pins ps7_0_axi_periph/M04_AXI]
 
   # Create port connections
-  connect_bd_net -net CTU_CAN_FD_0_CAN_tx [get_bd_pins CTU_CAN_FD_0/CAN_tx] [get_bd_pins can_crossbar_0/ifc1_tx]
-  connect_bd_net -net CTU_CAN_FD_0_irq [get_bd_pins CTU_CAN_FD_0/irq] [get_bd_pins xlconcat_0/In0]
-  connect_bd_net -net CTU_CAN_FD_1_CAN_tx [get_bd_pins CTU_CAN_FD_1/CAN_tx] [get_bd_pins can_crossbar_0/ifc2_tx]
-  connect_bd_net -net CTU_CAN_FD_1_irq [get_bd_pins CTU_CAN_FD_1/irq] [get_bd_pins xlconcat_0/In1]
+  connect_bd_net -net CTU_CAN_FD_0_CAN_tx [get_bd_pins CTU_CAN_FD_0/CAN_tx] [get_bd_pins can_merge_0/can_tx2]
+  connect_bd_net -net CTU_CAN_FD_0_irq [get_bd_pins CTU_CAN_FD_0/irq] [get_bd_pins xlconcat_0/In1]
+  connect_bd_net -net CTU_CAN_FD_1_CAN_tx [get_bd_pins CTU_CAN_FD_1/CAN_tx] [get_bd_pins can_merge_0/can_tx3]
+  connect_bd_net -net CTU_CAN_FD_1_irq [get_bd_pins CTU_CAN_FD_1/irq] [get_bd_pins xlconcat_0/In2]
   connect_bd_net -net Net2 [get_bd_ports FPGA_IO_A] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_A]
   connect_bd_net -net Net3 [get_bd_ports FPGA_IO_B] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_B]
   connect_bd_net -net Net4 [get_bd_ports FPGA_IO_C] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_C]
   connect_bd_net -net c_counter_binary_0_Q [get_bd_pins CTU_CAN_FD_0/timestamp] [get_bd_pins CTU_CAN_FD_1/timestamp] [get_bd_pins c_counter_binary_0/Q]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN1_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN1_RX] [get_bd_pins can_crossbar_0/can1_rx]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN2_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN2_RX] [get_bd_pins can_crossbar_0/can2_rx]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN3_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN3_RX] [get_bd_pins can_crossbar_0/can3_rx]
-  connect_bd_net -net can4x_to_pmod12_pins_0_CAN4_RX [get_bd_pins can4x_to_pmod12_pins_0/CAN4_RX] [get_bd_pins can_crossbar_0/can4_rx]
-  connect_bd_net -net can_crossbar_0_can1_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN1_TX] [get_bd_pins can_crossbar_0/can1_tx]
-  connect_bd_net -net can_crossbar_0_can2_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN2_TX] [get_bd_pins can_crossbar_0/can2_tx]
-  connect_bd_net -net can_crossbar_0_can3_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN3_TX] [get_bd_pins can_crossbar_0/can3_tx]
-  connect_bd_net -net can_crossbar_0_can4_tx [get_bd_pins can4x_to_pmod12_pins_0/CAN4_TX] [get_bd_pins can_crossbar_0/can4_tx]
-  connect_bd_net -net can_crossbar_0_ifc1_rx [get_bd_pins CTU_CAN_FD_0/CAN_rx] [get_bd_pins can_crossbar_0/ifc1_rx]
-  connect_bd_net -net can_crossbar_0_ifc2_rx [get_bd_pins CTU_CAN_FD_1/CAN_rx] [get_bd_pins can_crossbar_0/ifc2_rx]
-  connect_bd_net -net can_crossbar_0_ifc3_rx [get_bd_pins can_crossbar_0/ifc3_rx] [get_bd_pins sja1000_0/can_rx]
-  connect_bd_net -net can_crossbar_0_ifc4_rx [get_bd_pins can_crossbar_0/ifc4_rx] [get_bd_pins sja1000_1/can_rx]
+  connect_bd_net -net can_merge_0_can_rx [get_bd_pins CTU_CAN_FD_0/CAN_rx] [get_bd_pins CTU_CAN_FD_1/CAN_rx] [get_bd_pins can_merge_0/can_rx] [get_bd_pins sja1000_0/can_rx] [get_bd_pins sja1000_1/can_rx]
   connect_bd_net -net canbench_cc_gpio_0_GPIO_I [get_bd_pins canbench_cc_gpio_0/GPIO_I] [get_bd_pins processing_system7_0/GPIO_I]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins CTU_CAN_FD_0/s00_axi_aclk] [get_bd_pins CTU_CAN_FD_1/s00_axi_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins can_crossbar_0/s00_axi_aclk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/M03_ACLK] [get_bd_pins ps7_0_axi_periph/M04_ACLK] [get_bd_pins ps7_0_axi_periph/M05_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/can_clk] [get_bd_pins sja1000_0/s00_axi_aclk] [get_bd_pins sja1000_1/can_clk] [get_bd_pins sja1000_1/s00_axi_aclk]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_pins CTU_CAN_FD_0/s00_axi_aclk] [get_bd_pins CTU_CAN_FD_1/s00_axi_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/M02_ACLK] [get_bd_pins ps7_0_axi_periph/M03_ACLK] [get_bd_pins ps7_0_axi_periph/M04_ACLK] [get_bd_pins ps7_0_axi_periph/M05_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/can_clk] [get_bd_pins sja1000_0/s00_axi_aclk] [get_bd_pins sja1000_1/can_clk] [get_bd_pins sja1000_1/s00_axi_aclk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_processing_system7_0_100M/ext_reset_in]
   connect_bd_net -net processing_system7_0_GPIO_O [get_bd_pins canbench_cc_gpio_0/GPIO_O] [get_bd_pins processing_system7_0/GPIO_O]
   connect_bd_net -net rst_processing_system7_0_100M_interconnect_aresetn [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins rst_processing_system7_0_100M/interconnect_aresetn]
-  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/s00_axi_aresetn] [get_bd_pins CTU_CAN_FD_1/s00_axi_aresetn] [get_bd_pins can_crossbar_0/s00_axi_aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/M03_ARESETN] [get_bd_pins ps7_0_axi_periph/M04_ARESETN] [get_bd_pins ps7_0_axi_periph/M05_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/s00_axi_aresetn] [get_bd_pins sja1000_1/s00_axi_aresetn]
-  connect_bd_net -net sja1000_0_can_tx [get_bd_pins can_crossbar_0/ifc3_tx] [get_bd_pins sja1000_0/can_tx]
-  connect_bd_net -net sja1000_0_irq [get_bd_pins sja1000_0/irq] [get_bd_pins xlconcat_0/In4]
-  connect_bd_net -net sja1000_1_can_tx [get_bd_pins can_crossbar_0/ifc4_tx] [get_bd_pins sja1000_1/can_tx]
-  connect_bd_net -net sja1000_1_irq [get_bd_pins sja1000_1/irq] [get_bd_pins xlconcat_0/In5]
+  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/s00_axi_aresetn] [get_bd_pins CTU_CAN_FD_1/s00_axi_aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/M02_ARESETN] [get_bd_pins ps7_0_axi_periph/M03_ARESETN] [get_bd_pins ps7_0_axi_periph/M04_ARESETN] [get_bd_pins ps7_0_axi_periph/M05_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/s00_axi_aresetn] [get_bd_pins sja1000_1/s00_axi_aresetn]
+  connect_bd_net -net sja1000_0_can_tx [get_bd_pins can_merge_0/can_tx1] [get_bd_pins sja1000_0/can_tx]
+  connect_bd_net -net sja1000_0_irq [get_bd_pins sja1000_0/irq] [get_bd_pins xlconcat_0/In0]
+  connect_bd_net -net sja1000_1_can_tx [get_bd_pins can_merge_0/can_tx4] [get_bd_pins sja1000_1/can_tx]
+  connect_bd_net -net sja1000_1_irq [get_bd_pins sja1000_1/irq] [get_bd_pins xlconcat_0/In3]
   connect_bd_net -net xlconcat_0_dout [get_bd_pins processing_system7_0/IRQ_F2P] [get_bd_pins xlconcat_0/dout]
 
   # Create address segments
   create_bd_addr_seg -range 0x00010000 -offset 0x43C30000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_0/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_0_S00_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C70000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_1/S00_AXI/S00_AXI_reg] SEG_CTU_CAN_FD_1_S00_AXI_reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs can_crossbar_0/S00_AXI/S00_AXI_reg] SEG_can_crossbar_0_S00_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_0/S00_AXI/S00_AXI_reg] SEG_sja1000_0_S00_AXI_reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_1/S00_AXI/S00_AXI_reg] SEG_sja1000_1_S00_AXI_reg
 
