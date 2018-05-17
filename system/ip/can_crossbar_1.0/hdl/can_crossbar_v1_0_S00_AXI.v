@@ -1,7 +1,6 @@
-
 `timescale 1 ns / 1 ps
 
-module cross_impl #()
+module cross_impl
 (
 	input  wire [3:0] can_rx,
 	output wire [3:0] can_tx,
