@@ -26,7 +26,9 @@ petalinux_build:
 	$(MAKE) -C petalinux build bootscript
 dts:
 	cd system/script && hsi -mode batch -nolog -nojournal -source gendevtree.tcl
+fsbl:
+	cd system/script && hsi -mode batch -nolog -nojournal -source mkfsbl.tcl
 
-.PHONT: system_project petalinux_config petalinux_build dts
+.PHONT: system_project petalinux_config petalinux_build dts fsbl
 
 FORCE:

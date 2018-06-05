@@ -17,6 +17,6 @@ cd $dir/..
 exec bootgen -image system.bif -w -process_bitstream bin
 cd $_pwd
 
-set prefix "/srv/nfs4/debian-armhf/devel"
-file copy -force $dir/../system.bit.bin $prefix/system.bit.bin
-exec gzip -f $prefix/system.bit.bin
+#set prefix "/srv/nfs4/debian-armhf/devel"
+#file copy -force $dir/../system.bit.bin $prefix/system.bit.bin
+#exec gzip -f $prefix/system.bit.bin

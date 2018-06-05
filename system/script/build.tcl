@@ -10,6 +10,7 @@ generate_target all $obj
 export_ip_user_files -of_objects $obj -no_script -force -quiet
 
 update_compile_order -fileset sources_1
+update_ip_catalog -rebuild -update_module_ref
 upgrade_ip [get_ips]
 
 #foreach ip [get_ips] {

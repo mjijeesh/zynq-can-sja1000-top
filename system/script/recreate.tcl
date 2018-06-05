@@ -193,8 +193,9 @@ set_property "steps.write_bitstream.args.readback_file" "0" $obj
 set_property "steps.write_bitstream.args.verbose" "0" $obj
 current_run -implementation [get_runs impl_1]
 
-check_ip_cache -import_from_project -use_project_cache
+#check_ip_cache -import_from_project -use_project_cache
+check_ip_cache -disable_cache
+set_property STEPS.WRITE_BITSTREAM.TCL.POST $origin_dir/../script/dist.tcl [get_runs impl_1]
 
-#set_property STEPS.WRITE_BITSTREAM.TCL.POST $origin_dir/dist.tcl [get_runs impl_1]
 
 puts "INFO: Project created:canbench"
