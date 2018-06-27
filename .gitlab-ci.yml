@@ -13,6 +13,7 @@ build:
             - system/system.hdf
             - system/system.bit
             - system/project
+            - system/src/top
     only:
         - web
 variables:
