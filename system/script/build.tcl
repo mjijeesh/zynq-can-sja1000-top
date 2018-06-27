@@ -1,4 +1,4 @@
-set jobs 8
+set jobs [exec "nproc"]
 
 open_project ../project/canbench.xpr
 reset_run synth_1
