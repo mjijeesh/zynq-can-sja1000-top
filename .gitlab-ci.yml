@@ -1,0 +1,19 @@
+image: vivado:2017.4
+before_script:
+    # /opt/xilinx is mounted as docker volume (set in gitlab-runner config file)
+    - source /opt/xilinx/vivado-2017.4/settings.sh
+build:
+    stage: build
+    script:
+        - make system_project
+        - make system/system.hdf
+    artifacts:
+        when: always
+        paths:
+            - system/system.hdf
+            - system/system.bit
+            - system/project
+    only:
+        - web
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
