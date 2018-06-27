@@ -1,4 +1,4 @@
-image: debian:stretch
+image: mjerabek/vivado
 before_script:
     # /opt/xilinx is mounted as docker volume (set in gitlab-runner config file)
     - source /opt/xilinx/vivado-2017.4/settings.sh
