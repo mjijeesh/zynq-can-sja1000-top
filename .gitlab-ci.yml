@@ -33,13 +33,15 @@ pull-submodules:
         - eval $(ssh-agent -s) && ssh-add /depkey/id_rsa
         - mkdir ~/.ssh && cp /depkey/config ~/.ssh/config
         # Docker specific settings
-        - git config user.name "Gitlab CI"
-        - git config user.email "bot@gitlabci"
+        - git config --global user.name "Gitlab CI"
+        - git config --global user.email "bot@gitlabci"
     script:
         - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}
-        - git submodule update --remote --merge modules/CTU_CAN_FD modules/sja1000 modules/zlogan
+        - (cd modules/CTU_CAN_FD && git pull)
+        - (cd modules/sja1000 && git pull)
+        - (cd modules/zlogan && git pull)
         - "git commit -q -m 'auto: modules update' -a && git push || true"
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
