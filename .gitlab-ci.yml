@@ -16,7 +16,7 @@ build:
             - system/project
             - system/src/top
     only:
-        - ${AUTO_BRANCH}
+        - /^autobuild_.*/
     except:
         - web
         - schedules
