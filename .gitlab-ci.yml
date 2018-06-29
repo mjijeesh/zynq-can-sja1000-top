@@ -39,7 +39,7 @@ pull-submodules:
         - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}
-        - git submodule update --rebase modules/CTU_CAN_FD modules/sja1000 modules/zlogan
+        - git submodule update --merge modules/CTU_CAN_FD modules/sja1000 modules/zlogan
         - "git commit -q -m 'auto: modules update' -a && git push || true"
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
