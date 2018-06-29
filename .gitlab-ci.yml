@@ -1,9 +1,10 @@
-image: vivado:2017.4
-before_script:
-    # /opt/xilinx is mounted as docker volume (set in gitlab-runner config file)
-    - source /opt/xilinx/vivado-2017.4/settings.sh
+image: mjerabek/vivado
 build:
+    tags: [vivado]
     stage: build
+    before_script:
+        # /opt/xilinx is mounted as docker volume (set in gitlab-runner config file)
+        - source /opt/xilinx/vivado-2017.4/settings.sh
     script:
         - make system_project
         - make system/system.hdf
@@ -13,7 +14,34 @@ build:
             - system/system.hdf
             - system/system.bit
             - system/project
+            - system/src/top
     only:
+        - ${AUTO_BRANCH}
+    except:
         - web
+        - schedules
+pull-submodules:
+    tags: [vivado]
+    stage: build
+    only:
+        - schedules # on ${MASTER_BRANCH}
+        - web # for debugging
+    before_script:
+        # Deploy key: public part specified in project deploy keys
+        #             private part in docker volume, mounted on /depkey
+        # Add the private key to this user
+        - eval $(ssh-agent -s) && ssh-add /depkey/id_rsa
+        - mkdir ~/.ssh && cp /depkey/config ~/.ssh/config
+        # Docker specific settings
+        - git config user.name "Gitlab CI"
+        - git config user.email "bot@gitlabci"
+    script:
+        - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
+        - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
+        - git merge origin/${MASTER_BRANCH}
+        - git submodule update --rebase modules/CTU_CAN_FD modules/sja1000 modules/zlogan
+        - "git commit -q -m 'auto: modules update' -a && git push || true"
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    MASTER_BRANCH: microzed_apo_canfd_test
+    AUTO_BRANCH: autobuild_microzed_apo_canfd_test
