@@ -41,7 +41,8 @@ pull-submodules:
         - git merge origin/${MASTER_BRANCH}
         - git submodule update --remote --merge modules/CTU_CAN_FD modules/sja1000
         - (cd modules/zlogan && git pull origin zlogan-component)
-        - "git commit -q -m 'auto: modules update' -a && git push || true"
+        - "git commit -q -m 'auto: modules update' -a || true"
+        - git push || true
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
     MASTER_BRANCH: microzed_apo_canfd_test
