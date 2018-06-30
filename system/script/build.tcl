@@ -29,3 +29,9 @@ launch_runs impl_1 -jobs $jobs -to_step write_bitstream
 wait_on_run impl_1
 file copy -force ../project/canbench.runs/impl_1/top_wrapper.hwdef ../system.hdf
 file copy -force ../project/canbench.runs/impl_1/top_wrapper.bit ../system.bit
+
+set d "../project"
+
+open_run impl_1
+report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose -max_paths 10 -input_pins -routable_nets -name timing_1 -file $d/timing_report.txt -rpx $d/timing_report.rpx
+report_utilization -file $d/utilization_report.txt -name utilization_1
