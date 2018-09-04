@@ -6,17 +6,18 @@ import sys
 import random
 import unittest
 import subprocess as sp
-import traceback
-import time
+# import traceback
+# import time
 # import os
 from pathlib import Path
 from contextlib import contextmanager
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+# from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 import logging
 import logging.config
 from log import MyLogRecord
 import yaml
+import selectors
 
 REGTEST_BIN = '/devel/regtest'
 
@@ -120,7 +121,8 @@ def rand_can_frame(pext, pfd, pbrs):
 
     :param pext: probability of the frame having extended identifier
     :param pext: probability of the frame being CAN FD
-    :param pbrs: probability of a CAN FD frame having the Bit Rate Shift bit set
+    :param pbrs: probability of a CAN FD frame having the Bit Rate Shift
+                 bit set
 
     Probability of zero means strictly disabled.
     """
@@ -159,66 +161,84 @@ def dmesg_into(fout):
         proc.wait()
 
 
-def receive_msgs(ifc, N, fd):
-    """Receive N messages from ifc and return them as a list.
+class MessageReceiver:
+    """Receive N messages from ifc and make them available as a list in .messages.
 
-    :param ifc: the CANInterface to recv from
-    :param N: number of messages to recv
-    :param fd: whether to open the ifc in FD mode or nor
-
-    TODO: introduce timeout for recv, also accept error frames?
+    TODO: also accept error frames?
     """
-    log = logging.getLogger('can_recv.'+ifc.ifc)
-    try:
-        #return []
-        bus = ifc.open(fd=fd)
-        msgs = []
-        for i in range(N):
-            msgs.append(bus.recv())
-            log.debug('received message')
-        bus.shutdown()
-        return msgs
-    except:
-        traceback.print_exc()
-        log.info('Collected {} messages'.format(len(msgs)))
-        raise
-    finally:
-        log.info('done')
-        bus.shutdown()
+    def __init__(self, ifc, N, fd, sel):
+        """
+        :param ifc: the CANInterface to recv from
+        :param N: number of messages to recv
+        :param fd: whether to open the ifc in FD mode or nor
+        :param sel: selector instance
+        """
+        self.log = logging.getLogger('can_recv.'+ifc.ifc)
+        self.bus = ifc.open(fd=fd)
+        self.messages = []
+        self.N = N
+        self.sel = sel
+        sel.register(self.bus.socket, selectors.EVENT_READ, data=self)
+
+    def on_event(self):
+        self.messages.append(self.bus.recv())
+        self.log.debug('received message')
+        self.N -= 1
+        if self.N <= 0:
+            self.log.info('done')
+            self.sel.unregister(self.bus.socket)
+            self.close()
+
+    def close(self):
+        self.bus.shutdown()
+        self.bus = None
 
 
-def send_msgs(ifc, msgs, fd):
-    """Send the given messages on ifc.
+class MessageSender:
+    """Send the given messages on ifc."""
 
-    :param ifc: the CANInterface to send to
-    :param msgs: iterables of messages to send
-    :param fd: whether to open the ifc in FD mode or nor
+    def __init__(self, ifc, msgs, fd, sel):
+        """
+        :param ifc: the CANInterface to send to
+        :param msgs: iterables of messages to send
+        :param fd: whether to open the ifc in FD mode or nor
+        :param sel: selector instance
+        """
+        self.log = logging.getLogger('can_send')
+        self.bus = ifc.open(fd=fd)
+        self.msgs = msgs
+        self.i = 0
+        self.sel = sel
+        sel.register(self.bus.socket, selectors.EVENT_WRITE, data=self)
 
-    If send() fails with ENOSPC, wait indefinitely for the buffers to free.
-    TODO: parametrize interframe delay (delay X after every Y frames)
-    """
-    log = logging.getLogger('can_send')
-    try:
-        bus = ifc.open(fd=fd)
-        for msg in msgs:
-            ok = False
-            while not ok:
-                try:
-                    log.debug('sending msg')
-                    bus.send(msg)
-                    ok = True
-                except can.CanError as e:
-                    if e.__context__.errno == 105:
-                        log.debug('{} -> waiting a bit'.format(e))
-                        time.sleep(0.010)
-                    else:
-                        raise
-    except:
-        traceback.print_exc()
-        raise
-    finally:
-        log.info('done')
-        bus.shutdown()
+    def on_event(self):
+        cont = self._send_one()
+        # optionally send more frames at once
+        # NOTE: not recommended, might lead to frame loss
+        #       (and we are not benchmarking here)
+        try:
+            for i in range(0):
+                if not cont:
+                    break
+                cont = self._send_one()
+        except can.CanError as e:
+            if e.__context__.errno != 105:  # ENOSPC
+                raise
+
+    def _send_one(self):
+        if self.i >= len(self.msgs):
+            self.log.info('done')
+            self.sel.unregister(self.bus.socket)
+            self.close()
+            return False
+        msg = self.msgs[self.i]
+        self.log.debug('sending msg')
+        self.bus.send(msg)
+        self.i += 1  # after successful send
+        return True
+
+    def close(self):
+        self.bus.shutdown()
 
 
 class Regtest(unittest.TestCase):
@@ -304,23 +324,26 @@ class CanTest(unittest.TestCase):
                      for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
-        with ThreadPoolExecutor(max_workers=1000) as exe:
-            frecs = [exe.submit(receive_msgs, rxi,
-                                NMSGS if rxi.fd_capable else len(nonfd_msgs),
-                                fd=fd if rxi.fd_capable else False)
-                     for rxi in rxis]
-            fsend = exe.submit(send_msgs, txi, sent_msgs, fd=fd)
+        sel = selectors.DefaultSelector()
+        recs = []
+        for rxi in rxis:
+            rxi_fd = fd if rxi.fd_capable else False
+            nmsgs = NMSGS if rxi.fd_capable else len(nonfd_msgs)
+            receiver = MessageReceiver(rxi, nmsgs, fd=rxi_fd, sel=sel)
+            recs.append(receiver)
+        MessageSender(txi, sent_msgs, fd=fd, sel=sel)
+
+        # while there are some handlers registered ...
+        while sel.get_map():
             try:
-                fsend.result()  # wait for send done
-                received_msgs = [frec.result(timeout=1.0) for frec in frecs]
-            except TimeoutError:
-                # This will cause the recv() in the threads to return error
-                # and the jobs will end
-                # Otherwise the executor just waits for all jobs to exit,
-                # which obviously isn't gonna happen.
-                for rxi in rxis:
-                    rxi.set_down()
+                es = sel.select(timeout=1.0)
+            except KeyboardInterrupt:
+                print(dict(sel.get_map()))
                 raise
+            for key, events in es:
+                key.data.on_event()
+
+        received_msgs = [rec.messages for rec in recs]
 
         rxidxs = [0] * len(rxis)
         for i, sent in enumerate(sent_msgs):
@@ -390,4 +413,4 @@ if __name__ == '__main__':
         unittest.main()
 
 # TODO: search the dmesg log for errors
-# TODO: higher time delay for testing with SJAs and more messages - there are drops
+# TODO: check that error counters are 0 and other error stats are 0
