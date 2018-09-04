@@ -1,5 +1,6 @@
 image: mjerabek/vivado
 build:
+    image: mjerabek/vivado
     tags: [vivado]
     stage: build
     before_script:
@@ -7,12 +8,13 @@ build:
         - source /opt/xilinx/vivado-2017.4/settings.sh
     script:
         - make system_project
-        - make system/system.hdf
+        - make system/system.hdf system/system.bit.bin
     artifacts:
         when: always
         paths:
             - system/system.hdf
             - system/system.bit
+            - system/system.bit.bin
             - system/project
             - system/src/top
     only:
@@ -20,6 +22,19 @@ build:
     except:
         - web
         - schedules
+
+fetch_ctucanfd_driver:
+    stage: build
+    only:
+        - /^autobuild_.*/
+    except:
+        - web
+        - schedules
+    script:
+        - python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD)
+        # now we have both the driver and the bitstream
+        - ansible-playbook ci/test_can.yml
+
 pull-submodules:
     tags: [vivado]
     stage: build
