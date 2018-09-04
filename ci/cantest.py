@@ -39,7 +39,7 @@ class CANInterface:
         cmd += ['bitrate', str(bitrate)]
         if fd is None:
             fd = bool(dbitrate)
-        if not isinstance(fd, bool) and str != 'non-iso':
+        if not isinstance(fd, bool) and fd != 'non-iso':
             raise ValueError('fd must be either bool or "non-iso"')
         if fd:
             assert self.fd_capable
