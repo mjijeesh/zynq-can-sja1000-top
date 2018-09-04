@@ -29,7 +29,7 @@ def run(*args, **kwds):
 class CANInterface:
     addr = attr.ib()
     ifc = attr.ib()
-    type = attr.ib() # ctucanfd, sja1000, xilinx_can
+    type = attr.ib()  # ctucanfd, sja1000, xilinx_can
     fd_capable = attr.ib()
 
     def set_up(self, bitrate, dbitrate=None, fd=None):
@@ -59,7 +59,11 @@ class CANInterface:
 
 
 def compat2type(compatible):
-    compats = {'sja1000':'sja1000', 'ctucanfd': 'ctucanfd', 'xlnx,': 'xilinx_can'}
+    compats = {
+        'sja1000':'sja1000',
+        'ctucanfd': 'ctucanfd',
+        'xlnx,': 'xilinx_can'
+    }
     for c, tp in compats.items():
         if c in compatible:
             return tp
@@ -87,40 +91,38 @@ def get_ctucanfd_ifcs():
     return ifcs
 
 
-class Regtest(unittest.TestCase):
-    def test_printifcs(self):
-        ifcs = get_ctucanfd_ifcs()
-        cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
-        sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
-        self.assertGreaterEqual(len(cafd), 2, "At least 2 CTU CAN FD interfaces expected.")
-        self.assertGreaterEqual(len(sja), 1, "At least 1 SJA1000-fdtol interface expected.")
-        #from pprint import pprint
-        #pprint(ifcs)
-
-    def test_regtest(self):
-        """Test basic register access (read, write with byte enable)."""
-        ifcs = get_ctucanfd_ifcs()
-        ifcs = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
-        for ifc in ifcs:
-            with self.subTest(addr=ifc.addr):
-                res = sp.run([REGTEST_BIN, '-a', ifc.addr], stdout=sp.PIPE, stderr=sp.STDOUT)
-                sys.stdout.write(res.stdout.decode('utf-8'))
-                self.assertEqual(res.returncode, 0, "Regtest failed!")
-
-
 def rand_can_msg(pext, pfd, pbrs):
     def p(p): return False if p == 0 else p < random.random()
     ext_id = p(pext)
     id = random.randint(0, 0x1fffffff if ext_id else 0x7FF)
     fd = p(pfd)
-    brs = p(pbrs) if fd else False # BRS only in CAN FD frames, indicated by EDL bit
-    nonfd_lens = [0,1,2,3,4,5,6,7,8]
-    fd_lens = [0,1,2,3,4,5,6,7,8, 12, 16, 20, 24, 32, 48, 64]
+    # BRS only in CAN FD frames, indicated by EDL bit
+    brs = p(pbrs) if fd else False
+    nonfd_lens = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    fd_lens = [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64]
     length = random.choice(fd_lens if fd else nonfd_lens)
     data = bytes(random.getrandbits(8) for _ in range(length))
     msg = can.Message(arbitration_id=id, data=data, dlc=length,
                       extended_id=ext_id, is_fd=fd, bitrate_switch=brs)
     return msg
+
+
+@contextmanager
+def dmesg_into(fout):
+    #pos = fout.tell()
+    sp.run(['dmesg', '-C']) # clear the ring buffer
+    fout.flush()
+    cmd = ['dmesg', '--follow']
+    cmd += ['--level=emerg,alert,crit,err,warn']
+    cmd += ['--color=always']
+    proc = sp.Popen(cmd, stdout=fout, stdin=sp.DEVNULL)
+    #time.sleep(0.1)
+    #fout.truncate(pos)
+    try:
+        yield
+    finally:
+        proc.terminate()
+        proc.wait()
 
 
 def receive_msgs(ifc, N, fd):
@@ -141,24 +143,6 @@ def receive_msgs(ifc, N, fd):
     finally:
         log.info('done')
         bus.shutdown()
-
-
-@contextmanager
-def dmesg_into(fout):
-    #pos = fout.tell()
-    sp.run(['dmesg', '-C']) # clear the ring buffer
-    fout.flush()
-    cmd = ['dmesg', '--follow']
-    cmd += ['--level=emerg,alert,crit,err,warn']
-    cmd += ['--color=always']
-    proc = sp.Popen(cmd, stdout=fout, stdin=sp.DEVNULL)
-    #time.sleep(0.1)
-    #fout.truncate(pos)
-    try:
-        yield
-    finally:
-        proc.terminate()
-        proc.wait()
 
 
 def send_msgs(ifc, msgs, fd):
@@ -185,6 +169,31 @@ def send_msgs(ifc, msgs, fd):
         log.info('done')
         bus.shutdown()
 
+
+class Regtest(unittest.TestCase):
+    def test_printifcs(self):
+        ifcs = get_ctucanfd_ifcs()
+        cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
+        sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
+        self.assertGreaterEqual(len(cafd), 2,
+                                "At least 2 CTU CAN FD interfaces expected.")
+        self.assertGreaterEqual(len(sja), 1,
+                                "At least 1 SJA1000-fdtol interface expected.")
+        # from pprint import pprint
+        # pprint(ifcs)
+
+    def test_regtest(self):
+        """Test basic register access (read, write with byte enable)."""
+        ifcs = get_ctucanfd_ifcs()
+        ifcs = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
+        for ifc in ifcs:
+            with self.subTest(addr=ifc.addr):
+                res = sp.run([REGTEST_BIN, '-a', ifc.addr],
+                             stdout=sp.PIPE, stderr=sp.STDOUT)
+                sys.stdout.write(res.stdout.decode('utf-8'))
+                self.assertEqual(res.returncode, 0, "Regtest failed!")
+
+
 class CanTest(unittest.TestCase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -196,7 +205,7 @@ class CanTest(unittest.TestCase):
     def setUp(self):
         for ifc in self.ifcs:
             ifc.set_down()
-        #print('Random state:', random.getstate())
+        # print('Random state:', random.getstate())
         print('Test {}:'.format(self.id()), file=dmesg_log)
         self._dmesg_cm = dmesg_into(dmesg_log)
         self._dmesg_cm.__enter__()
@@ -205,7 +214,8 @@ class CanTest(unittest.TestCase):
         self._dmesg_cm.__exit__(None, None, None)
         del self._dmesg_cm
 
-    def _test_can_random(self, txi, rxis, fd, pext=0.5, pfd=0.5, pbrs=0.5, NMSGS=1000, bitrate=500000, dbitrate=4000000):
+    def _test_can_random(self, txi, rxis, fd, pext=0.5, pfd=0.5, pbrs=0.5,
+                         NMSGS=1000, bitrate=500000, dbitrate=4000000):
         if not fd:
             dbitrate = None
             pfd = 0
@@ -217,8 +227,10 @@ class CanTest(unittest.TestCase):
             rxi_fd = fd if rxi.fd_capable else False
             rxi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=rxi_fd)
 
-        sent_msgs = [rand_can_msg(pext=pext, pfd=pfd, pbrs=pbrs) for _ in range(NMSGS)]
+        sent_msgs = [rand_can_msg(pext=pext, pfd=pfd, pbrs=pbrs)
+                     for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
+
         with ThreadPoolExecutor(max_workers=1000) as exe:
             frecs = [exe.submit(receive_msgs, rxi,
                                 NMSGS if rxi.fd_capable else len(nonfd_msgs),
@@ -247,10 +259,11 @@ class CanTest(unittest.TestCase):
                     if received != sent:
                         print('Sent:', sent.__dict__)
                         print('Received:', received.__dict__)
-                    self.assertEqual(sent, received, "Received message {} not equal to sent!".format(i))
+                    msg = "Received message {} not equal to sent!".format(i)
+                    self.assertEqual(sent, received, msg)
         for rxi_id in range(len(rxis)):
-            self.assertEqual(rxidxs[rxi_id], len(received_msgs[rxi_id]), "Extra messages for ifc {}".format(rxis[rxi_id].ifc))
-
+            msg = "Extra messages for ifc {}".format(rxis[rxi_id].ifc)
+            self.assertEqual(rxidxs[rxi_id], len(received_msgs[rxi_id]), msg)
 
     def test_2canfd_non_fd(self):
         cafd = self.cafd
