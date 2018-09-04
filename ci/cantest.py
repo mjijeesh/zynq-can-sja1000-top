@@ -33,6 +33,13 @@ class CANInterface:
     fd_capable = attr.ib()
 
     def set_up(self, bitrate, dbitrate=None, fd=None):
+        """Set up and bring up the CAN interface.
+
+        :param bitrate: nominal bitrate
+        :param dbitrate: data bitrate (for CAN FD)
+        :param fd: True for iso fd, "non-iso" for non-iso fd, False to disable.
+                   None to detect based on if dbitrate is set.
+        """
         log = logging.getLogger('can_setup')
         run(['ip', 'link', 'set', self.ifc, 'down'])
         cmd = ['ip', 'link', 'set', self.ifc, 'type', 'can']
@@ -52,9 +59,11 @@ class CANInterface:
         run(['ip', 'link', 'set', self.ifc, 'up'])
 
     def set_down(self):
+        """Bring the interface down."""
         run(['ip', 'link', 'set', self.ifc, 'down'])
 
     def open(self, **kwds):
+        """Open and return a raw CAN socket (can.interface.Bus)."""
         return can.interface.Bus(channel=self.ifc, bustype='socketcan', **kwds)
 
 
@@ -70,13 +79,28 @@ def compat2type(compatible):
     return compatible
 
 
-def get_ctucanfd_ifcs():
+def get_can_interfaces():
+    """Gather a list of CAN interfaces currently present in the system.
+
+    Requires mounted /sys. Requires the device to be in device tree
+    for populating ifc.compatible.
+    Also brings all the devices down, because fd_capable may be discovered only
+    by trying to configure FD mode on the device (even to off), which in turn
+    requires the device to be down (that could be circumvented but there's
+    no need to bother).
+    """
+    log = logging.getLogger()
     ifcs = []
     for d in Path("/sys/class/net").glob('can*'):
         ifc = d.name
-        of = d / "device/of_node"
-        compatible = (of / "compatible").read_bytes()[:-1].decode('ascii')
-        type = compat2type(compatible)
+        try:
+            of = d / "device/of_node"
+            compatible = (of / "compatible").read_bytes()[:-1].decode('ascii')
+            type = compat2type(compatible)
+        except:
+            # in case the device is not in device tree
+            log.warning("{}: not in device tree -> leaving .compatible unpopulated".format(ifc))
+            type = None
         addr = struct.unpack('>I', (of / "reg").read_bytes()[:4])[0]
         addr = '0x{:08x}'.format(addr)
         ifc = CANInterface(addr=addr, ifc=ifc, type=type, fd_capable=None)
@@ -91,7 +115,15 @@ def get_ctucanfd_ifcs():
     return ifcs
 
 
-def rand_can_msg(pext, pfd, pbrs):
+def rand_can_frame(pext, pfd, pbrs):
+    """Generate a random CAN frame.
+
+    :param pext: probability of the frame having extended identifier
+    :param pext: probability of the frame being CAN FD
+    :param pbrs: probability of a CAN FD frame having the Bit Rate Shift bit set
+
+    Probability of zero means strictly disabled.
+    """
     def p(p): return False if p == 0 else p < random.random()
     ext_id = p(pext)
     id = random.randint(0, 0x1fffffff if ext_id else 0x7FF)
@@ -109,15 +141,17 @@ def rand_can_msg(pext, pfd, pbrs):
 
 @contextmanager
 def dmesg_into(fout):
-    #pos = fout.tell()
-    sp.run(['dmesg', '-C']) # clear the ring buffer
+    """Capture kernel messages to file-like fout. Acts as a context manager.
+
+    Colors are enabled. Only messages with severity warn or higher are logged.
+    Side effect: the kmsg ring buffer is cleared on entry.
+    """
+    sp.run(['dmesg', '-C'])  # clear the ring buffer
     fout.flush()
     cmd = ['dmesg', '--follow']
     cmd += ['--level=emerg,alert,crit,err,warn']
     cmd += ['--color=always']
     proc = sp.Popen(cmd, stdout=fout, stdin=sp.DEVNULL)
-    #time.sleep(0.1)
-    #fout.truncate(pos)
     try:
         yield
     finally:
@@ -126,6 +160,14 @@ def dmesg_into(fout):
 
 
 def receive_msgs(ifc, N, fd):
+    """Receive N messages from ifc and return them as a list.
+
+    :param ifc: the CANInterface to recv from
+    :param N: number of messages to recv
+    :param fd: whether to open the ifc in FD mode or nor
+
+    TODO: introduce timeout for recv, also accept error frames?
+    """
     log = logging.getLogger('can_recv.'+ifc.ifc)
     try:
         #return []
@@ -146,6 +188,15 @@ def receive_msgs(ifc, N, fd):
 
 
 def send_msgs(ifc, msgs, fd):
+    """Send the given messages on ifc.
+
+    :param ifc: the CANInterface to send to
+    :param msgs: iterables of messages to send
+    :param fd: whether to open the ifc in FD mode or nor
+
+    If send() fails with ENOSPC, wait indefinitely for the buffers to free.
+    TODO: parametrize interframe delay (delay X after every Y frames)
+    """
     log = logging.getLogger('can_send')
     try:
         bus = ifc.open(fd=fd)
@@ -171,8 +222,11 @@ def send_msgs(ifc, msgs, fd):
 
 
 class Regtest(unittest.TestCase):
-    def test_printifcs(self):
-        ifcs = get_ctucanfd_ifcs()
+    """Perform basic core integration tests - access registers etc."""
+
+    def test_interfaces(self):
+        """Check that there are the interfaces we expect."""
+        ifcs = get_can_interfaces()
         cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
         sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
         self.assertGreaterEqual(len(cafd), 2,
@@ -184,7 +238,7 @@ class Regtest(unittest.TestCase):
 
     def test_regtest(self):
         """Test basic register access (read, write with byte enable)."""
-        ifcs = get_ctucanfd_ifcs()
+        ifcs = get_can_interfaces()
         ifcs = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
         for ifc in ifcs:
             with self.subTest(addr=ifc.addr):
@@ -195,9 +249,14 @@ class Regtest(unittest.TestCase):
 
 
 class CanTest(unittest.TestCase):
+    """Test communication via SocketCAN.
+
+    For each test, dmesg_log is active (together with test identifying line).
+    """
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        ifcs = get_ctucanfd_ifcs()
+        ifcs = get_can_interfaces()
         self.ifcs = ifcs
         self.cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
         self.sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
@@ -216,6 +275,20 @@ class CanTest(unittest.TestCase):
 
     def _test_can_random(self, txi, rxis, fd, pext=0.5, pfd=0.5, pbrs=0.5,
                          NMSGS=1000, bitrate=500000, dbitrate=4000000):
+        """Generic test method.
+
+        :param txi: TX interface
+        :param rxis: list of RX interfaces
+        :param fd: whether to enable FD mode and FD messages; True for iso fd,
+                   "non-iso" for non-iso fd, False to disable.
+        :param pext: probability of a frame having extended identifier
+        :param pext: probability of a frame being CAN FD
+        :param pbrs: probability of a CAN FD frame having the Bit Rate Shift
+                     bit set
+        :param NMSGS: how many messages to send
+        :param bitrate: nominal bitrate
+        :param dbitrate: data bitrate (for CAN FD)
+        """
         if not fd:
             dbitrate = None
             pfd = 0
@@ -227,7 +300,7 @@ class CanTest(unittest.TestCase):
             rxi_fd = fd if rxi.fd_capable else False
             rxi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=rxi_fd)
 
-        sent_msgs = [rand_can_msg(pext=pext, pfd=pfd, pbrs=pbrs)
+        sent_msgs = [rand_can_frame(pext=pext, pfd=pfd, pbrs=pbrs)
                      for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
@@ -238,7 +311,7 @@ class CanTest(unittest.TestCase):
                      for rxi in rxis]
             fsend = exe.submit(send_msgs, txi, sent_msgs, fd=fd)
             try:
-                fsend.result() # wait for send done
+                fsend.result()  # wait for send done
                 received_msgs = [frec.result(timeout=1.0) for frec in frecs]
             except TimeoutError:
                 # This will cause the recv() in the threads to return error
@@ -273,6 +346,10 @@ class CanTest(unittest.TestCase):
         cafd = self.cafd
         self._test_can_random(cafd[0], [cafd[1]], fd=True)
 
+    def test_2canfd_fd_noniso(self):
+        cafd = self.cafd
+        self._test_can_random(cafd[0], [cafd[1]], fd="non-iso")
+
     def test_canfd_sja_nonfd(self):
         cafd = self.cafd
         sja = self.sja
@@ -288,24 +365,28 @@ class CanTest(unittest.TestCase):
         sja = self.sja
         self._test_can_random(cafd[0], [cafd[1], sja[0]], fd=True)
 
+    def test_2canfd_sja_fd_noniso(self):
+        cafd = self.cafd
+        sja = self.sja
+        self._test_can_random(cafd[0], [cafd[1], sja[0]], fd="non-iso")
+
 
 if __name__ == '__main__':
+    # Set up logging
     with Path('logging.yaml').open('rt', encoding='utf-8') as f:
         cfg = yaml.load(f)
     logging.setLogRecordFactory(MyLogRecord)
     logging.config.dictConfig(cfg)
 
-    # the logfile must reside on a local filesystem, not NFS, not sshfs
-    # otherwise the truncate won't work :/
+    # Set up dmesg logging
     logfile = Path('dmesg-xx.log')
     try:
         logfile.unlink()
     except FileNotFoundError:
         pass
-    # it is absolutely vital to open in append mode, otherwise runcate won't
-    # work as expected (other other process' file descriptor offset will be
-    # unchanged and thus the file will be padded with zeros on next write)
+
     with logfile.open('at') as dmesg_log:
+        # Run the tests
         unittest.main()
 
 # TODO: search the dmesg log for errors
