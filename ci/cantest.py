@@ -136,6 +136,7 @@ def receive_msgs(ifc, N, fd):
         return msgs
     except:
         traceback.print_exc()
+        log.info('Collected {} messages'.format(len(msgs)))
         raise
     finally:
         log.info('done')
@@ -204,7 +205,7 @@ class CanTest(unittest.TestCase):
         self._dmesg_cm.__exit__(None, None, None)
         del self._dmesg_cm
 
-    def _test_can_random(self, txi, rxis, fd, pext=0.5, pfd=0.5, pbrs=0.5, NMSGS=100, bitrate=500000, dbitrate=4000000):
+    def _test_can_random(self, txi, rxis, fd, pext=0.5, pfd=0.5, pbrs=0.5, NMSGS=1000, bitrate=500000, dbitrate=4000000):
         if not fd:
             dbitrate = None
             pfd = 0
@@ -217,12 +218,16 @@ class CanTest(unittest.TestCase):
             rxi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=rxi_fd)
 
         sent_msgs = [rand_can_msg(pext=pext, pfd=pfd, pbrs=pbrs) for _ in range(NMSGS)]
+        nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
         with ThreadPoolExecutor(max_workers=1000) as exe:
-            frecs = [exe.submit(receive_msgs, rxi, NMSGS, fd=fd) for rxi in rxis]
+            frecs = [exe.submit(receive_msgs, rxi,
+                                NMSGS if rxi.fd_capable else len(nonfd_msgs),
+                                fd=fd if rxi.fd_capable else False)
+                     for rxi in rxis]
             fsend = exe.submit(send_msgs, txi, sent_msgs, fd=fd)
             try:
                 fsend.result() # wait for send done
-                received_msgs = [frec.result(timeout=2.0) for frec in frecs]
+                received_msgs = [frec.result(timeout=1.0) for frec in frecs]
             except TimeoutError:
                 # This will cause the recv() in the threads to return error
                 # and the jobs will end
@@ -291,3 +296,4 @@ if __name__ == '__main__':
         unittest.main()
 
 # TODO: search the dmesg log for errors
+# TODO: higher time delay for testing with SJAs and more messages - there are drops
