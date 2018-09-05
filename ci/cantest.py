@@ -18,8 +18,12 @@ import logging.config
 from log import MyLogRecord
 import yaml
 import selectors
+import json
+from pprint import pprint
+import kmsg
 
 REGTEST_BIN = '/devel/regtest'
+IP_BIN = '/devel/ip'
 
 
 def run(*args, **kwds):
@@ -42,8 +46,8 @@ class CANInterface:
                    None to detect based on if dbitrate is set.
         """
         log = logging.getLogger('can_setup')
-        run(['ip', 'link', 'set', self.ifc, 'down'])
-        cmd = ['ip', 'link', 'set', self.ifc, 'type', 'can']
+        run([IP_BIN, 'link', 'set', self.ifc, 'down'])
+        cmd = [IP_BIN, 'link', 'set', self.ifc, 'type', 'can']
         cmd += ['bitrate', str(bitrate)]
         if fd is None:
             fd = bool(dbitrate)
@@ -57,11 +61,17 @@ class CANInterface:
             cmd += ['fd', 'on' if fd else 'off']
         log.info('{}: {}'.format(self.ifc, ' '.join(cmd)))
         run(cmd)
-        run(['ip', 'link', 'set', self.ifc, 'up'])
+        run([IP_BIN, 'link', 'set', self.ifc, 'up'])
 
     def set_down(self):
         """Bring the interface down."""
-        run(['ip', 'link', 'set', self.ifc, 'down'])
+        run([IP_BIN, 'link', 'set', self.ifc, 'down'])
+
+    def info(self):
+        """Get interface info. Requires (patched) ip from iproute >=v4.13.0."""
+        res = run([IP_BIN, '-detail', '-stats', '-json', 'link', 'show',
+                   self.ifc], stdout=sp.PIPE)
+        return json.loads(res.stdout.decode('ascii'))[0]
 
     def open(self, **kwds):
         """Open and return a raw CAN socket (can.interface.Bus)."""
@@ -280,6 +290,10 @@ class CanTest(unittest.TestCase):
         self.ifcs = ifcs
         self.cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
         self.sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
+        self.kmsg = kmsg.Kmsg()
+
+    def __del__(self):
+        self.kmsg.close()
 
     def setUp(self):
         for ifc in self.ifcs:
@@ -288,6 +302,8 @@ class CanTest(unittest.TestCase):
         print('Test {}:'.format(self.id()), file=dmesg_log)
         self._dmesg_cm = dmesg_into(dmesg_log)
         self._dmesg_cm.__enter__()
+        self.kmsg.seek_to_end()
+        self.kmsg.reset_base_timestamp()
 
     def tearDown(self):
         self._dmesg_cm.__exit__(None, None, None)
@@ -361,6 +377,39 @@ class CanTest(unittest.TestCase):
             msg = "Extra messages for ifc {}".format(rxis[rxi_id].ifc)
             self.assertEqual(rxidxs[rxi_id], len(received_msgs[rxi_id]), msg)
 
+        # check that no error condition occured
+        ifcs = [txi] + rxis
+        for ifc in ifcs:
+            info = ifc.info()
+            can_stats = info['linkinfo']['info_xstats']
+            keys = ['bus_error', 'bus_off', 'error_warning', 'error_passive',
+                    'restarts']
+            for k in keys:
+                msg = '{}: {} should be 0'.format(ifc.ifc, can_stats[k])
+                self.assertEqual(can_stats[k], 0, msg)
+
+            berr = info['linkinfo']['info_data']['berr_counter']
+            for k in ['rx', 'tx']:
+                msg = '{}: berr {} should be 0'.format(ifc.ifc, berr[k])
+                self.assertEqual(berr[k], 0, msg)
+            # TODO: check stats64 -> {rx,tx} -> dropper, errors, ... ?
+            #       (must take difference)
+            # TODO: must difference also be take for info_xstats??
+
+        # check that no warning or error was logged in dmesg
+        def p(msg):
+            if msg.pri < kmsg.LOG_WARN:
+                return False
+            elif msg.pri <= kmsg.LOG_WARN and 'bitrate error 0.0%' in msg.msg:
+                return False
+            else:
+                return True
+        msgs = list(filter(p, self.kmsg.messages()))
+        log = logging.getLogger('dmesg')
+        for msg in msgs:
+            log.error('[{:10.6f}]  {}'.format(msg.timestamp/1e9, msg.msg))
+        self.assertEqual(len(msgs), 0, "There were kernel errors/warnings.")
+
     def test_2canfd_non_fd(self):
         cafd = self.cafd
         self._test_can_random(cafd[0], [cafd[1]], fd=False)
@@ -411,6 +460,3 @@ if __name__ == '__main__':
     with logfile.open('at') as dmesg_log:
         # Run the tests
         unittest.main()
-
-# TODO: search the dmesg log for errors
-# TODO: check that error counters are 0 and other error stats are 0
