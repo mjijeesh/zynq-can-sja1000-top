@@ -372,21 +372,18 @@ class CanTest(unittest.TestCase):
         self._check_kmsg()
 
     def _check_messages_match(self, received_msgs, sent_msgs, nonfd_msgs, rxis):
-        rxidxs = [0] * len(rxis)
-        for i, sent in enumerate(sent_msgs):
-            for rxi_id, rxi in enumerate(rxis):
-                if not (sent.is_fd or sent.bitrate_switch) or rxi.fd_capable:
-                    received = received_msgs[rxi_id][rxidxs[rxi_id]]
-                    rxidxs[rxi_id] += 1
-
-                    if received != sent:
-                        print('Sent:', sent.__dict__)
-                        print('Received:', received.__dict__)
-                    msg = "Received message {} not equal to sent!".format(i)
-                    self.assertEqual(sent, received, msg)
-        for rxi_id in range(len(rxis)):
-            msg = "Extra messages for ifc {}".format(rxis[rxi_id].ifc)
-            self.assertEqual(rxidxs[rxi_id], len(received_msgs[rxi_id]), msg)
+        log = logging.getLogger('check')
+        rxi_rms_sms = [(rxi, rms, sent_msgs if rxi.fd_capable else nonfd_msgs)
+                       for rxi, rms in zip(rxis, received_msgs)]
+        for rxi, rms, sms in rxi_rms_sms:
+            msg = "{}: received frame count not equal to sent frame count".format(rxi.ifc)
+            self.assertEqual(len(rms), len(sms), msg)
+            for i, (received, sent) in enumerate(zip(rms, sms)):
+                if received != sent:
+                    log.info('Sent: {}'.format(sent.__dict__))
+                    log.info('Received: {}'.format(received.__dict__))
+                msg = "{}: Received message {} not equal to sent!".format(rxi.ifc, i)
+                self.assertEqual(sent, received, msg)
 
     def _check_ifc_stats(self, ifc):
         """Check that no error condition occured on the interface."""
