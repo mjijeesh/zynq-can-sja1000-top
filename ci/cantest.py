@@ -398,16 +398,28 @@ class CanTest(unittest.TestCase):
 
         # check that no warning or error was logged in dmesg
         def p(msg):
-            if msg.pri < kmsg.LOG_WARN:
+            if msg.pri > kmsg.LOG_WARN:  # lower prio is higher number
                 return False
-            elif msg.pri <= kmsg.LOG_WARN and 'bitrate error 0.0%' in msg.msg:
+            elif msg.pri >= kmsg.LOG_WARN and 'bitrate error 0.0%' in msg.msg:
                 return False
             else:
                 return True
         msgs = list(filter(p, self.kmsg.messages()))
         log = logging.getLogger('dmesg')
+        pri2func = {
+            kmsg.LOG_EMERG: log.error,
+            kmsg.LOG_CRIT: log.error,
+            kmsg.LOG_ALERT: log.error,
+            kmsg.LOG_ERR: log.error,
+            kmsg.LOG_WARN: log.warning,
+            kmsg.LOG_INFO: log.info,
+            kmsg.LOG_NOTICE: log.info,
+            kmsg.LOG_DEBUG: log.debug,
+        }
         for msg in msgs:
-            log.error('[{:10.6f}]  {}'.format(msg.timestamp/1e9, msg.msg))
+            func = pri2func.get(msg.pri, log.error)
+            func('<{}>[{:10.6f}]  {}'.format(msg.pri, msg.timestamp/1e9,
+                                             msg.msg))
         self.assertEqual(len(msgs), 0, "There were kernel errors/warnings.")
 
     def test_2canfd_non_fd(self):
