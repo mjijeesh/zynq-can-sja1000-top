@@ -361,6 +361,17 @@ class CanTest(unittest.TestCase):
 
         received_msgs = [rec.messages for rec in recs]
 
+        self._check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis)
+
+        # check that no error condition occured
+        ifcs = [txi] + rxis
+        for ifc in ifcs:
+            self._check_ifc_stats(ifc)
+
+        # check that no warning or error was logged in dmesg
+        self._check_kmsg()
+
+    def _check_messages_match(self, received_msgs, sent_msgs, nonfd_msgs, rxis):
         rxidxs = [0] * len(rxis)
         for i, sent in enumerate(sent_msgs):
             for rxi_id, rxi in enumerate(rxis):
@@ -377,26 +388,26 @@ class CanTest(unittest.TestCase):
             msg = "Extra messages for ifc {}".format(rxis[rxi_id].ifc)
             self.assertEqual(rxidxs[rxi_id], len(received_msgs[rxi_id]), msg)
 
-        # check that no error condition occured
-        ifcs = [txi] + rxis
-        for ifc in ifcs:
-            info = ifc.info()
-            can_stats = info['linkinfo']['info_xstats']
-            keys = ['bus_error', 'bus_off', 'error_warning', 'error_passive',
-                    'restarts']
-            for k in keys:
-                msg = '{}: {} should be 0'.format(ifc.ifc, can_stats[k])
-                self.assertEqual(can_stats[k], 0, msg)
+    def _check_ifc_stats(self, ifc):
+        """Check that no error condition occured on the interface."""
+        info = ifc.info()
+        can_stats = info['linkinfo']['info_xstats']
+        keys = ['bus_error', 'bus_off', 'error_warning', 'error_passive',
+                'restarts']
+        for k in keys:
+            msg = '{}: {} should be 0'.format(ifc.ifc, can_stats[k])
+            self.assertEqual(can_stats[k], 0, msg)
 
-            berr = info['linkinfo']['info_data']['berr_counter']
-            for k in ['rx', 'tx']:
-                msg = '{}: berr {} should be 0'.format(ifc.ifc, berr[k])
-                self.assertEqual(berr[k], 0, msg)
-            # TODO: check stats64 -> {rx,tx} -> dropper, errors, ... ?
-            #       (must take difference)
-            # TODO: must difference also be take for info_xstats??
+        berr = info['linkinfo']['info_data']['berr_counter']
+        for k in ['rx', 'tx']:
+            msg = '{}: berr {} should be 0'.format(ifc.ifc, berr[k])
+            self.assertEqual(berr[k], 0, msg)
+        # TODO: check stats64 -> {rx,tx} -> dropper, errors, ... ?
+        #       (must take difference)
+        # TODO: must difference also be take for info_xstats??
 
-        # check that no warning or error was logged in dmesg
+    def _check_kmsg(self):
+        """Check that no warning or error was logged in dmesg."""
         def p(msg):
             if msg.pri > kmsg.LOG_WARN:  # lower prio is higher number
                 return False
