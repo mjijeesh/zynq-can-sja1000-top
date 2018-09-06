@@ -7,7 +7,7 @@ host=147.32.86.100
 dir=$(ssh -T root@$host mktemp -d /tmp/gitlabci.XXXXXX)
 
 # do not copy __pycache__
-tar czf archive.tar.gz system/system.bit.bin ctucanfd.ko regtest cantest/*.{py,yaml,txt}
+tar czf archive.tar.gz system/system.bit.bin ctucanfd.ko regtest ci/cantest/*.{py,yaml,txt}
 scp archive.tar.gz root@$host:$dir
 rm archive.tar.gz
 
@@ -18,6 +18,7 @@ set -eux
 cd '$dir'
 
 tar xf archive.tar.gz
+mv ci/cantest cantest
 
 # Unload old ctucanfd driver module
 rmmod ctucanfd || true
