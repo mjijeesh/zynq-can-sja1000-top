@@ -38,8 +38,8 @@ fetch_ctucanfd_driver:
     allow_failure: yes # debug
     only:
         - /^autobuild_.*/
-    except:
         - web
+    except:
         - schedules
     script:
         - python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
@@ -49,8 +49,8 @@ test:
     allow_failure: yes # debug
     only:
         - /^autobuild_.*/
-    except:
         - web
+    except:
         - schedules
     script:
         - ./ci/upload_and_run.sh
@@ -63,7 +63,7 @@ pull-submodules:
     stage: build
     only:
         - schedules # on ${MASTER_BRANCH}
-        - web # for debugging
+        # no need to debug via web now
     script:
         - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
