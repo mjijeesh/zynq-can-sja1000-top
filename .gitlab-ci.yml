@@ -35,6 +35,7 @@ build:
 
 fetch_ctucanfd_driver:
     stage: build
+    image: hathi.duckdns.org/user/ctucanfd_drvtest
     allow_failure: yes # debug
     only:
         - /^autobuild_.*/
@@ -42,11 +43,21 @@ fetch_ctucanfd_driver:
     except:
         - schedules
     script:
-        - python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
+        #- python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
+        - make -C modules/CTU_CAN_FD/driver -j$(nproc)
+        - make -C modules/CTU_CAN_FD/driver/linux KDIR=/linux/build -j$(nproc)
+        - cp modules/CTU_CAN_FD/driver/linux/ctucanfd.ko ctucanfd.ko
+        - cp modules/CTU_CAN_FD/driver/regtest regtest
+    artifacts:
+        paths:
+            - ctucanfd.ko
+            - regtest
 
 test:
     stage: test
+    image: hathi.duckdns.org/user/ctucanfd_drvtest
     allow_failure: yes # debug
+    dependencies: [fetch_ctucanfd_driver]
     only:
         - /^autobuild_.*/
         - web
