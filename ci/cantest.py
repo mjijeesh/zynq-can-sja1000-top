@@ -301,6 +301,7 @@ class CanTest(unittest.TestCase):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
+        self.log = logging.getLogger('test')
         ifcs = get_can_interfaces()
         self.ifcs = ifcs
         self.cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
@@ -351,6 +352,9 @@ class CanTest(unittest.TestCase):
             rxi_fd = fd if rxi.fd_capable else False
             rxi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=rxi_fd)
 
+        all_ifcs = [txi] + rxis
+        pretest_infos = [ifc.info() for ifc in all_ifcs]
+
         sent_msgs = [rand_can_frame(pext=pext, pfd=pfd, pbrs=pbrs)
                      for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
@@ -361,9 +365,8 @@ class CanTest(unittest.TestCase):
         self._check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis)
 
         # check that no error condition occured
-        ifcs = [txi] + rxis
-        for ifc in ifcs:
-            self._check_ifc_stats(ifc)
+        for ifc, pretest_info in zip(all_ifcs, pretest_infos):
+            self._check_ifc_stats(ifc, pretest_info)
 
         # check that no warning or error was logged in dmesg
         self._check_kmsg()
@@ -380,6 +383,8 @@ class CanTest(unittest.TestCase):
         :param nonfd_msgs: filtered `sent_msgs` without FD frames
         """
         NMSGS = len(sent_msgs)
+        self.log.info('{} frames in total, {} non-fd frames, {} fd frames'
+                      .format(NMSGS, len(nonfd_msgs), NMSGS-len(nonfd_msgs)))
         sel = selectors.DefaultSelector()
         recs = []
         for rxi in rxis:
@@ -416,23 +421,33 @@ class CanTest(unittest.TestCase):
                 msg = "{}: Received message {} not equal to sent!".format(rxi.ifc, i)
                 self.assertEqual(sent, received, msg)
 
-    def _check_ifc_stats(self, ifc):
+    def _check_ifc_stats(self, ifc, pretest_info):
         """Check that no error condition occured on the interface."""
         info = ifc.info()
-        can_stats = info['linkinfo']['info_xstats']
-        keys = ['bus_error', 'bus_off', 'error_warning', 'error_passive',
-                'restarts']
-        for k in keys:
-            msg = '{}: {} should be 0'.format(ifc.ifc, can_stats[k])
-            self.assertEqual(can_stats[k], 0, msg)
 
-        berr = info['linkinfo']['info_data']['berr_counter']
-        for k in ['rx', 'tx']:
-            msg = '{}: berr {} should be 0'.format(ifc.ifc, berr[k])
-            self.assertEqual(berr[k], 0, msg)
-        # TODO: check stats64 -> {rx,tx} -> dropper, errors, ... ?
-        #       (must take difference)
-        # TODO: must difference also be take for info_xstats??
+        def fix_info(g):
+            for k in g(info).keys():
+                g(info)[k] -= g(pretest_info)[k]
+
+        fix_info(lambda i: i['linkinfo']['info_xstats'])
+        fix_info(lambda i: i['stats64']['rx'])
+        fix_info(lambda i: i['stats64']['tx'])
+
+        def assert_zero(prefix, arr, keys):
+            for k in keys:
+                msg = '{}: {}{} should be 0'.format(ifc.ifc, prefix, k)
+                self.assertEqual(arr[k], 0, msg)
+
+        assert_zero('xstats.', info['linkinfo']['info_xstats'],
+                    ['bus_error', 'bus_off', 'error_warning', 'error_passive',
+                     'restarts'])
+        assert_zero('berr.', info['linkinfo']['info_data']['berr_counter'],
+                    ['rx', 'tx'])
+        assert_zero('stats64.rx.', info['stats64']['rx'],
+                    ['dropped', 'errors', 'over_errors'])
+        assert_zero('stats64.tx.', info['stats64']['tx'],
+                    ['dropped', 'errors', 'carrier_errors'])
+
 
     def _check_kmsg(self):
         """Check that no warning or error was logged in dmesg."""
@@ -511,3 +526,5 @@ if __name__ == '__main__':
     with logfile.open('at') as dmesg_log:
         # Run the tests
         unittest.main()
+
+# TODO: data overun test
