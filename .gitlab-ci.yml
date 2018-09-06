@@ -30,14 +30,13 @@ build:
         - web
         - schedules
 
-fetch_ctucanfd_driver:
+build_ctucanfd_driver:
     stage: build
     image: hathi.duckdns.org/user/ctucanfd_drvtest
-    allow_failure: yes # debug
     only:
         - /^autobuild_.*/
-        - web
     except:
+        - web
         - schedules
     script:
         #- python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
@@ -53,12 +52,11 @@ fetch_ctucanfd_driver:
 test:
     stage: test
     image: hathi.duckdns.org/user/ctucanfd_drvtest
-    allow_failure: yes # debug
-    dependencies: [fetch_ctucanfd_driver]
+    dependencies: [build_ctucanfd_driver, build]
     only:
         - /^autobuild_.*/
-        - web
     except:
+        - web
         - schedules
     script:
         - ./ci/upload_and_run.sh
@@ -72,7 +70,7 @@ pull-submodules:
     stage: build
     only:
         - schedules # on ${MASTER_BRANCH}
-        # no need to debug via web now
+        - web
     script:
         # Docker specific settings
         - git config --global user.name "Gitlab CI"
