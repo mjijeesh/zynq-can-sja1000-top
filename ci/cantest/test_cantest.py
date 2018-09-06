@@ -60,6 +60,7 @@ def mkid(value):
             fdid = 'nofd'
         return fdid
 
+
 ifcs = can_interfaces()
 cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
 sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
@@ -162,7 +163,7 @@ def _send_msgs_sync(rxis, txi, sent_msgs, nonfd_msgs, fd):
     return received_msgs
 
 
-def _check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis, *, expect):
+def _check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis, expect):
     log = logging.getLogger('check')
     rxi_rms_sms = [(rxi, rms, sent_msgs if rxi.fd_capable else nonfd_msgs)
                    for rxi, rms in zip(rxis, received_msgs)]
