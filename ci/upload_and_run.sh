@@ -2,7 +2,7 @@
 
 set -eux
 
-host=mzapo
+host=147.32.86.100
 
 dir=$(ssh -T root@$host mktemp -d /tmp/gitlabci.XXXXXX)
 
