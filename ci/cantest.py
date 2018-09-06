@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import attr
+import errno
 import can
 import struct
 import sys
@@ -171,6 +172,15 @@ def dmesg_into(fout):
         proc.wait()
 
 
+def receive_messages(ifc, bus, N):
+    log = logging.getLogger('can_recv.'+ifc.ifc)
+    for i in range(N):
+        msg = bus.recv()
+        log.debug('received message')
+        yield msg
+    log.info('done')
+
+
 class MessageReceiver:
     """Receive N messages from ifc and make them available as a list in .messages.
 
@@ -183,25 +193,46 @@ class MessageReceiver:
         :param fd: whether to open the ifc in FD mode or nor
         :param sel: selector instance
         """
-        self.log = logging.getLogger('can_recv.'+ifc.ifc)
-        self.bus = ifc.open(fd=fd)
         self.messages = []
-        self.N = N
+        self.bus = ifc.open(fd=fd)
+        self.gen = receive_messages(ifc, self.bus, N)
         self.sel = sel
+        self.N = N
         sel.register(self.bus.socket, selectors.EVENT_READ, data=self)
 
     def on_event(self):
-        self.messages.append(self.bus.recv())
-        self.log.debug('received message')
-        self.N -= 1
-        if self.N <= 0:
-            self.log.info('done')
-            self.sel.unregister(self.bus.socket)
+        try:
+            msg = next(self.gen)
+        except:
             self.close()
+            raise
+        else:
+            self.messages.append(msg)
+            # because StopIteration would be raised only at next iter
+            if len(self.messages) == self.N:
+                self.close()
 
     def close(self):
-        self.bus.shutdown()
-        self.bus = None
+        if self.bus:
+            self.sel.unregister(self.bus.socket)
+            self.bus.shutdown()
+            self.bus = None
+
+
+def send_messages(ifc, bus, msgs):
+    log = logging.getLogger('can_send')
+
+    i = 0
+    while i < len(msgs):
+        try:
+            log.debug('sending msg')
+            bus.send(msgs[i])
+            i += 1
+            yield
+        except can.CanError as e:
+            if e.__context__.errno != errno.ENOSPC:
+                raise
+    log.info('done')
 
 
 class MessageSender:
@@ -214,41 +245,25 @@ class MessageSender:
         :param fd: whether to open the ifc in FD mode or nor
         :param sel: selector instance
         """
-        self.log = logging.getLogger('can_send')
         self.bus = ifc.open(fd=fd)
-        self.msgs = msgs
-        self.i = 0
+        self.gen = send_messages(ifc, self.bus, msgs)
         self.sel = sel
         sel.register(self.bus.socket, selectors.EVENT_WRITE, data=self)
 
     def on_event(self):
-        cont = self._send_one()
-        # optionally send more frames at once
-        # NOTE: not recommended, might lead to frame loss
-        #       (and we are not benchmarking here)
         try:
-            for i in range(0):
-                if not cont:
-                    break
-                cont = self._send_one()
-        except can.CanError as e:
-            if e.__context__.errno != 105:  # ENOSPC
-                raise
-
-    def _send_one(self):
-        if self.i >= len(self.msgs):
-            self.log.info('done')
-            self.sel.unregister(self.bus.socket)
+            next(self.gen)
+        except StopIteration:
             self.close()
-            return False
-        msg = self.msgs[self.i]
-        self.log.debug('sending msg')
-        self.bus.send(msg)
-        self.i += 1  # after successful send
-        return True
+        except:
+            self.close()
+            raise
 
     def close(self):
-        self.bus.shutdown()
+        if self.bus:
+            self.sel.unregister(self.bus.socket)
+            self.bus.shutdown()
+            self.bus = None
 
 
 class Regtest(unittest.TestCase):
