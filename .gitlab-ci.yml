@@ -63,8 +63,9 @@ test:
     script:
         - ./ci/upload_and_run.sh
     artifacts:
+        when: always
         paths:
-            - ci/test_hw.xml
+            - test_hw.xml
 
 pull-submodules:
     tags: [vivado]
