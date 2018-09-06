@@ -1,0 +1,5 @@
+pyyaml
+pytest
+pytest-expect==0.1
+attrs
+can
