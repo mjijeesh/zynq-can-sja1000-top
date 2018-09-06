@@ -216,7 +216,7 @@ def send_messages(ifc, bus, msgs):
             i += 1
             yield
         except can.CanError as e:
-            if e.__context__.errno != errno.ENOSPC:
+            if e.__context__.errno != errno.ENOBUFS:
                 raise
     log.info('done')
 

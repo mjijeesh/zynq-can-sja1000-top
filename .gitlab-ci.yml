@@ -35,16 +35,18 @@ build:
 
 fetch_ctucanfd_driver:
     stage: build
+    allow_failure: yes # debug
     only:
         - /^autobuild_.*/
     except:
         - web
         - schedules
     script:
-        - python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD)
+        - python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
 
 test:
     stage: test
+    allow_failure: yes # debug
     only:
         - /^autobuild_.*/
     except:
