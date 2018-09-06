@@ -340,6 +340,31 @@ class CanTest(unittest.TestCase):
                      for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
+        received_msgs = self._send_msgs_sync(rxis, txi, sent_msgs, nonfd_msgs,
+                                             fd=fd)
+
+        self._check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis)
+
+        # check that no error condition occured
+        ifcs = [txi] + rxis
+        for ifc in ifcs:
+            self._check_ifc_stats(ifc)
+
+        # check that no warning or error was logged in dmesg
+        self._check_kmsg()
+
+    def _send_msgs_sync(self, rxis, txi, sent_msgs, nonfd_msgs, fd):
+        """Send messages to `txi`, receive them on `rxis` and return a list
+           of lists.
+
+        The messages are sent and received in one thread in event-based manner.
+
+        :param txi: TX interface
+        :param rxis: list of RX interfaces
+        :param sent_msgs: messages to send
+        :param nonfd_msgs: filtered `sent_msgs` without FD frames
+        """
+        NMSGS = len(sent_msgs)
         sel = selectors.DefaultSelector()
         recs = []
         for rxi in rxis:
@@ -360,16 +385,7 @@ class CanTest(unittest.TestCase):
                 key.data.on_event()
 
         received_msgs = [rec.messages for rec in recs]
-
-        self._check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis)
-
-        # check that no error condition occured
-        ifcs = [txi] + rxis
-        for ifc in ifcs:
-            self._check_ifc_stats(ifc)
-
-        # check that no warning or error was logged in dmesg
-        self._check_kmsg()
+        return received_msgs
 
     def _check_messages_match(self, received_msgs, sent_msgs, nonfd_msgs, rxis):
         log = logging.getLogger('check')
