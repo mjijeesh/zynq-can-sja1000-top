@@ -1,5 +1,5 @@
 pyyaml
 pytest
-pytest-expect==0.1
+git+https://github.com/okken/pytest-expect
 attrs
 can

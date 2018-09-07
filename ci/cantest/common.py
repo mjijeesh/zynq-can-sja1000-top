@@ -9,6 +9,7 @@ import random
 from contextlib import contextmanager
 import selectors
 import errno
+import copy
 
 IP_BIN = '/devel/ip'
 if not Path(IP_BIN).exists():
@@ -72,6 +73,26 @@ class CANInterface:
         return can.interface.Bus(channel=self.ifc, bustype='socketcan', **kwds)
 
 
+@attr.s
+class FrameGenParams:
+    pext = attr.ib()
+    "probability of a frame having extended identifier"
+
+    pfd = attr.ib()
+    "probability of a frame being CAN FD"
+
+    pbrs = attr.ib()
+    "probability of a CAN FD frame having the Bit Rate Shift bit set"
+
+    def mask_fd(self, fd):
+        c = self
+        if not fd:
+            c = copy.copy(self)
+            c.pfd = 0
+            c.pbrs = 0
+        return c
+
+
 def compat2type(compatible):
     compats = {
         'sja1000':'sja1000',
@@ -122,22 +143,17 @@ def get_can_interfaces():
     return ifcs
 
 
-def rand_can_frame(pext, pfd, pbrs):
+def rand_can_frame(fgpar: FrameGenParams) -> can.Message:
     """Generate a random CAN frame.
-
-    :param pext: probability of the frame having extended identifier
-    :param pext: probability of the frame being CAN FD
-    :param pbrs: probability of a CAN FD frame having the Bit Rate Shift
-                 bit set
 
     Probability of zero means strictly disabled.
     """
     def p(p): return False if p == 0 else p < random.random()
-    ext_id = p(pext)
+    ext_id = p(fgpar.pext)
     id = random.randint(0, 0x1fffffff if ext_id else 0x7FF)
-    fd = p(pfd)
+    fd = p(fgpar.pfd)
     # BRS only in CAN FD frames, indicated by EDL bit
-    brs = p(pbrs) if fd else False
+    brs = p(fgpar.pbrs) if fd else False
     nonfd_lens = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     fd_lens = [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64]
     length = random.choice(fd_lens if fd else nonfd_lens)
