@@ -102,21 +102,21 @@ def test_can_random(expect, fkmsg,  # fixtures
         pfd = 0
         pbrs = 0
 
-    txi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=fd)
-
-    for rxi in rxis:
-        rxi_fd = fd if rxi.fd_capable else False
-        rxi.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=rxi_fd)
-
     all_ifcs = [txi] + rxis
+
+    for ifc in all_ifcs:
+        ifc_fd = fd if ifc.fd_capable else False
+        ifc.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=ifc_fd)
+
     pretest_infos = [ifc.info() for ifc in all_ifcs]
 
     sent_msgs = [rand_can_frame(pext=pext, pfd=pfd, pbrs=pbrs)
                  for _ in range(NMSGS)]
     nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
-    received_msgs = _send_msgs_sync(rxis, txi, sent_msgs, nonfd_msgs,
-                                    fd=fd)
+    len_fd, len_nonfd = len(sent_msgs), len(nonfd_msgs)
+    rxis_n = [(rxi, len_fd if rxi.fd_capable else len_nonfd) for rxi in rxis]
+    received_msgs = _send_msgs_sync(rxis_n, [(txi, sent_msgs)], fd=fd)
 
     _check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis,
                           expect=expect)
@@ -129,26 +129,23 @@ def test_can_random(expect, fkmsg,  # fixtures
     _check_kmsg(expect=expect, fkmsg=fkmsg)
 
 
-def _send_msgs_sync(rxis, txi, sent_msgs, nonfd_msgs, fd):
+def _send_msgs_sync(rxis_n, txis_msgs, fd):
     """Send messages to `txi`, receive them on `rxis` and return a list
        of lists.
 
     The messages are sent and received in one thread in event-based manner.
 
-    :param txi: TX interface
-    :param rxis: list of RX interfaces
-    :param sent_msgs: messages to send
-    :param nonfd_msgs: filtered `sent_msgs` without FD frames
+    :param txis_msgs: [(txi, iterable(CAMFrame))]
+    :param rxis: [(rxi, n_expected_messages)]
     """
-    NMSGS = len(sent_msgs)
     sel = selectors.DefaultSelector()
     recs = []
-    for rxi in rxis:
+    for rxi, nmsgs in rxis_n:
         rxi_fd = fd if rxi.fd_capable else False
-        nmsgs = NMSGS if rxi.fd_capable else len(nonfd_msgs)
         receiver = MessageReceiver(rxi, nmsgs, fd=rxi_fd, sel=sel)
         recs.append(receiver)
-    MessageSender(txi, sent_msgs, fd=fd, sel=sel)
+    for txi, msgs in txis_msgs:
+        MessageSender(txi, msgs, fd=fd, sel=sel)
 
     # while there are some handlers registered ...
     while sel.get_map():
@@ -233,3 +230,62 @@ def _check_kmsg(*, expect, fkmsg):
         func('<{}>[{:10.6f}]  {}'.format(msg.pri, msg.timestamp/1e9,
                                          msg.msg))
     expect(len(msgs) == 0, "There were kernel errors/warnings.")
+
+
+@pytest.mark.parametrize('pext,pfd,pbrs',    [(0.5, 0.5, 0.5)])
+@pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
+@pytest.mark.parametrize('NMSGS', [(1000)])
+@run_setup_teardown
+def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
+                           fd, NMSGS, bitrate, dbitrate,
+                           pext, pfd, pbrs):
+    """Generic test method.
+
+    :param txis: TX interfaces
+    :param rxis: list of RX interfaces
+    :param fd: whether to enable FD mode and FD messages; True for iso fd,
+               "non-iso" for non-iso fd, False to disable.
+    :param pext: probability of a frame having extended identifier
+    :param pext: probability of a frame being CAN FD
+    :param pbrs: probability of a CAN FD frame having the Bit Rate Shift
+                 bit set
+    :param NMSGS: how many messages to send
+    :param bitrate: nominal bitrate
+    :param dbitrate: data bitrate (for CAN FD)
+    """
+
+    if not fd:
+        dbitrate = None
+        pfd = 0
+        pbrs = 0
+
+    all_ifcs = [cafd[0], cafd[1]]
+
+    for ifc in all_ifcs:
+        ifc_fd = fd if ifc.fd_capable else False
+        ifc.set_up(bitrate=bitrate, dbitrate=dbitrate, fd=ifc_fd)
+
+    pretest_infos = [ifc.info() for ifc in all_ifcs]
+
+    def genmsgs(fd):
+        lpfd = pfd if fd else 0
+        lpbrs = pbrs if fd else 0
+        return [rand_can_frame(pext=pext, pfd=lpfd, pbrs=lpbrs)
+                for _ in range(NMSGS)]
+
+    rxis_n = [(ifc, NMSGS) for ifc in all_ifcs]
+    txis_msgs = [(ifc, genmsgs(fd=fd and ifc.fd_capable)) for ifc in all_ifcs]
+    received_msgs = _send_msgs_sync(rxis_n, txis_msgs, fd=fd)
+
+    def check_messages_match(rec, sent, rxi):
+        _check_messages_match(rec, sent, sent, [rxi], expect=expect)
+
+    check_messages_match(received_msgs[0], txis_msgs[1][1], [rxis_n[0][0]])
+    check_messages_match(received_msgs[1], txis_msgs[0][1], [rxis_n[1][0]])
+
+    # check that no error condition occured
+    for ifc, pretest_info in zip(all_ifcs, pretest_infos):
+        _check_ifc_stats(ifc, pretest_info, expect=expect)
+
+    # check that no warning or error was logged in dmesg
+    _check_kmsg(expect=expect, fkmsg=fkmsg)
