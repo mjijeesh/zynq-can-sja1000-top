@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from . import kmsg
 from .common import (get_can_interfaces, rand_can_frame, MessageReceiver,
                      MessageSender, CANInterface, FrameGenParams)
+from typing import List, Tuple, Iterable
+import can
 
 
 @pytest.fixture(scope='module')
@@ -62,9 +64,15 @@ def mkid(value):
         return fdid
 
 
-ifcs = can_interfaces()
+ifcs = get_can_interfaces()
 cafd = [ifc for ifc in ifcs if ifc.type == 'ctucanfd']
 sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
+
+if not cafd and not sja:
+    logging.warning('Using testing interfaces ...')
+    print(ifcs)
+    cafd = ifcs[:2]
+    sja = ifcs[2:4]
 
 
 @pytest.mark.parametrize("txi,rxis,fd", [
@@ -112,7 +120,9 @@ def test_can_random(expect, fkmsg,  # fixtures
                               expect=expect)
 
 
-def _send_msgs_sync(rxis_n, txis_msgs, fd):
+def _send_msgs_sync(rxis_n: List[Tuple[CANInterface, int]],
+                    txis_msgs: List[Tuple[CANInterface, Iterable[can.Message]]],
+                    fd) -> List[List[can.Message]]:
     """Send messages to `txi`, receive them on `rxis` and return a list
        of lists.
 
@@ -144,7 +154,11 @@ def _send_msgs_sync(rxis_n, txis_msgs, fd):
     return received_msgs
 
 
-def _check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis, expect):
+def _check_messages_match(received_msgs: List[List[can.Message]],
+                          sent_msgs: List[can.Message],
+                          nonfd_msgs: List[can.Message],
+                          rxis: List[CANInterface],
+                          expect):
     log = logging.getLogger('check')
     rxi_rms_sms = [(rxi, rms, sent_msgs if rxi.fd_capable else nonfd_msgs)
                    for rxi, rms in zip(rxis, received_msgs)]
@@ -187,7 +201,7 @@ def _check_ifc_stats(ifc, pretest_info, *, expect):
                 ['dropped', 'errors', 'carrier_errors'])
 
 
-def _check_kmsg(*, expect, fkmsg):
+def _check_kmsg(*, expect, fkmsg: kmsg.Kmsg):
     """Check that no warning or error was logged in dmesg."""
     def p(msg):
         if msg.pri > kmsg.LOG_WARN:  # lower prio is higher number
@@ -240,6 +254,7 @@ def _cm_setup_and_check_stats_and_kmsg(*, expect, fkmsg, fd, bitrate, dbitrate,
 @pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5)])
 @pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
 @pytest.mark.parametrize('NMSGS', [(1000)])
+@pytest.mark.parametrize('fd', [(False)])
 @run_setup_teardown
 def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
                            fd, NMSGS, bitrate, dbitrate, fgpar):
@@ -260,7 +275,7 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
         return [rand_can_frame(fgp) for _ in range(NMSGS)]
 
     def check_messages_match(rec, sent, rxi):
-        _check_messages_match(rec, sent, sent, [rxi], expect=expect)
+        _check_messages_match([rec], sent, sent, [rxi], expect=expect)
 
     all_ifcs = [cafd[0], cafd[1]]
     with _cm_setup_and_check_stats_and_kmsg(**locals()):
@@ -268,5 +283,5 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
         txis_msgs = [(ifc, genmsgs(fd=ifc.fd_capable)) for ifc in all_ifcs]
         received_msgs = _send_msgs_sync(rxis_n, txis_msgs, fd=fd)
 
-        check_messages_match(received_msgs[0], txis_msgs[1][1], [rxis_n[0][0]])
-        check_messages_match(received_msgs[1], txis_msgs[0][1], [rxis_n[1][0]])
+        check_messages_match(received_msgs[0], txis_msgs[1][1], rxis_n[0][0])
+        check_messages_match(received_msgs[1], txis_msgs[0][1], rxis_n[1][0])
