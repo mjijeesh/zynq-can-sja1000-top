@@ -1,0 +1,24 @@
+---
+- hosts: mzapo
+  remote_user: root
+  tasks:
+  - name: Upload bitstream
+    copy:
+      src:  system/system.bit.bin
+      dest: /devel/system.bit.bin
+  - name: Upload ctucanfd.ko
+    copy:
+      src:  ctucanfd.ko
+      dest: /devel/ctucanfd.ko
+  - name: Unload old ctucanfd driver module
+    command: rmmod ctucanfd
+    ignore_errors: yes
+  # TODO: run async task for dmesg, level >= warning
+  - name: Load bitstream
+    command: /devel/upbit
+  - name: Load ctucanfd driver module
+    command: insmod /devel/ctucanfd.ko
+
+  # and now the tests ...
+  # probably in Python ...
+  -
