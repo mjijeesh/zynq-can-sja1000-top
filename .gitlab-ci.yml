@@ -1,5 +1,13 @@
 image: mjerabek/vivado
+before_script:
+    # Deploy key: public part specified in project deploy keys
+    #             private part in docker volume, mounted on /depkey
+    # Add the private key to this user
+    - eval $(ssh-agent -s) && ssh-add /depkey/id_rsa
+    - mkdir ~/.ssh && cp /depkey/config ~/.ssh/config
+
 build:
+    image: mjerabek/vivado
     tags: [vivado]
     stage: build
     before_script:
@@ -7,12 +15,13 @@ build:
         - source /opt/xilinx/vivado-2017.4/settings.sh
     script:
         - make system_project
-        - make system/system.hdf
+        - make system/system.hdf system/system.bit.bin
     artifacts:
         when: always
         paths:
             - system/system.hdf
             - system/system.bit
+            - system/system.bit.bin
             - system/project
             - system/src/top
     only:
@@ -20,22 +29,52 @@ build:
     except:
         - web
         - schedules
+
+build_ctucanfd_driver:
+    stage: build
+    image: hathi.duckdns.org/user/ctucanfd_drvtest
+    only:
+        - /^autobuild_.*/
+    except:
+        - web
+        - schedules
+    script:
+        #- python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
+        - make -C modules/CTU_CAN_FD/driver -j$(nproc)
+        - make -C modules/CTU_CAN_FD/driver/linux KDIR=/linux/build -j$(nproc)
+        - cp modules/CTU_CAN_FD/driver/linux/ctucanfd.ko ctucanfd.ko
+        - cp modules/CTU_CAN_FD/driver/regtest regtest
+    artifacts:
+        paths:
+            - ctucanfd.ko
+            - regtest
+
+test:
+    stage: test
+    image: hathi.duckdns.org/user/ctucanfd_drvtest
+    dependencies: [build_ctucanfd_driver, build]
+    only:
+        - /^autobuild_.*/
+    except:
+        - web
+        - schedules
+    script:
+        - ./ci/upload_and_run.sh
+    artifacts:
+        when: always
+        paths:
+            - test_hw.xml
+
 pull-submodules:
     tags: [vivado]
     stage: build
     only:
         - schedules # on ${MASTER_BRANCH}
-        - web # for debugging
-    before_script:
-        # Deploy key: public part specified in project deploy keys
-        #             private part in docker volume, mounted on /depkey
-        # Add the private key to this user
-        - eval $(ssh-agent -s) && ssh-add /depkey/id_rsa
-        - mkdir ~/.ssh && cp /depkey/config ~/.ssh/config
+        - web
+    script:
         # Docker specific settings
         - git config --global user.name "Gitlab CI"
         - git config --global user.email "bot@gitlabci"
-    script:
         - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}

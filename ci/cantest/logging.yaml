@@ -1,0 +1,22 @@
+version: 1
+formatters:
+    colored:
+        format: '[%(asctime)s]  (%(color)s%(slvl)s%(crst)s)  %(name)-6s %(msgcolor)s%(message)s%(crst)s'
+    nocolor:
+        format: '[%(asctime)s]  (%(slvl)s)  %(name)-6s %(message)s'
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: colored
+        stream: ext://sys.stderr
+loggers:
+    can_send:
+        level: INFO
+        propagate: on
+    can_recv:
+        level: INFO
+        propagate: on
+root:
+    level: DEBUG
+    handlers: [console]
