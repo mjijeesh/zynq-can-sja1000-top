@@ -71,6 +71,7 @@ sja = [ifc for ifc in ifcs if ifc.type == 'sja1000']
     (cafd[0], [cafd[1]],         True),
     (cafd[0], [cafd[1]],         "non-iso"),
     (cafd[0], [sja[0]],          False),
+    (sja[0],  [cafd[0]],         False),
     (cafd[0], [cafd[1], sja[0]], False),
     (cafd[0], [cafd[1], sja[0]], True),
     (cafd[0], [cafd[1], sja[0]], "non-iso")], ids=mkid)
