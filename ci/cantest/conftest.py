@@ -10,6 +10,6 @@ import pytest
 def setup_logging():
     fname = Path(__file__).parent / 'logging.yaml'
     with fname.open('rt', encoding='utf-8') as f:
-        cfg = yaml.load(f)
+        cfg = yaml.safe_load(f)
     logging.setLogRecordFactory(MyLogRecord)
     logging.config.dictConfig(cfg)
