@@ -11,6 +11,8 @@ import selectors
 import errno
 
 IP_BIN = '/devel/ip'
+if not Path(IP_BIN).exists():
+    IP_BIN = '/home/martin/src/iproute2/ip/ip'
 
 
 def run(*args, **kwds):
@@ -24,6 +26,9 @@ class CANInterface:
     type = attr.ib()  # ctucanfd, sja1000, xilinx_can
     fd_capable = attr.ib()
 
+    def is_vcan(self):
+        return 'vcan' in self.ifc
+
     def set_up(self, bitrate, dbitrate=None, fd=None):
         """Set up and bring up the CAN interface.
 
@@ -35,14 +40,16 @@ class CANInterface:
         log = logging.getLogger('can_setup')
         run([IP_BIN, 'link', 'set', self.ifc, 'down'])
         cmd = [IP_BIN, 'link', 'set', self.ifc, 'type', 'can']
-        cmd += ['bitrate', str(bitrate)]
+        if not self.is_vcan():
+            cmd += ['bitrate', str(bitrate)]
         if fd is None:
             fd = bool(dbitrate)
         if not isinstance(fd, bool) and fd != 'non-iso':
             raise ValueError('fd must be either bool or "non-iso"')
         if fd:
             assert self.fd_capable
-            cmd += ['dbitrate', str(dbitrate)]
+            if not self.is_vcan():
+                cmd += ['dbitrate', str(dbitrate)]
             cmd += ['fd-non-iso', 'on' if fd == 'non-iso' else 'off']
         if self.fd_capable:
             cmd += ['fd', 'on' if fd else 'off']
@@ -89,18 +96,20 @@ def get_can_interfaces():
     """
     log = logging.getLogger()
     ifcs = []
-    for d in Path("/sys/class/net").glob('can*'):
+    for d in Path("/sys/class/net").glob('*can*'):
         ifc = d.name
-        try:
-            of = d / "device/of_node"
+        of = d / "device/of_node"
+        if of.exists():
             compatible = (of / "compatible").read_bytes()[:-1].decode('ascii')
             type = compat2type(compatible)
-        except:
+            addr = struct.unpack('>I', (of / "reg").read_bytes()[:4])[0]
+            addr = '0x{:08x}'.format(addr)
+        else:
             # in case the device is not in device tree
-            log.warning("{}: not in device tree -> leaving .compatible unpopulated".format(ifc))
+            log.warning("{}: not in device tree -> leaving .compatible and .addr unpopulated".format(ifc))
             type = None
-        addr = struct.unpack('>I', (of / "reg").read_bytes()[:4])[0]
-        addr = '0x{:08x}'.format(addr)
+            addr = None
+
         ifc = CANInterface(addr=addr, ifc=ifc, type=type, fd_capable=None)
 
         # discover if the interface is FD capable
