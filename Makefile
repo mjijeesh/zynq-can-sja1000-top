@@ -8,6 +8,8 @@ system_project:
 	cd system/script && vivado -mode batch -nolog -nojournal -source recreate.tcl -tclargs --origin_dir `pwd`
 system/system.hdf system/system.bit:
 	cd system/script && vivado -mode batch -nolog -nojournal -source build.tcl
+system/system.bit.bin: system/system.bit
+	cd system && bootgen -image system.bif -w -process_bitstream bin
 petalinux/bootscript: FORCE
 	$(MAKE) -C petalinux bootscript
 petalinux/images/linux/BOOT.BIN: FORCE
