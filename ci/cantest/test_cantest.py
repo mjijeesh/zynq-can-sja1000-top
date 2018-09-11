@@ -232,7 +232,7 @@ def _check_kmsg(*, expect, fkmsg: kmsg.Kmsg):
 @contextmanager
 def _cm_setup_and_check_stats_and_kmsg(*, expect, fkmsg, fd, bitrate, dbitrate,
                                        fgpar, all_ifcs, **kwds):
-    fgpar = fgpar.mask_fd(fd)
+    fgpar.mask_fd_inplace(fd)
     if not fd:
         dbitrate = None
 

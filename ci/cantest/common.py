@@ -84,13 +84,14 @@ class FrameGenParams:
     pbrs = attr.ib()
     "probability of a CAN FD frame having the Bit Rate Shift bit set"
 
-    def mask_fd(self, fd):
-        c = self
+    def mask_fd_inplace(self, fd):
         if not fd:
-            c = copy.copy(self)
-            c.pfd = 0
-            c.pbrs = 0
-        return c
+            self.pfd = 0
+            self.pbrs = 0
+        return self
+
+    def mask_fd(self, fd):
+        return copy.copy(self).mask_fd_inplace(fd)
 
 
 def compat2type(compatible):
