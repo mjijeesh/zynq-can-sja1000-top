@@ -10,7 +10,7 @@ from . import kmsg
 from .common import (get_can_interfaces, rand_can_frame, MessageReceiver,
                      deterministic_frame_sequence, MessageSender, CANInterface,
                      FrameGenParams)
-from typing import List, Tuple, Iterable
+from typing import List, Tuple, Iterable, Any
 import can
 
 
@@ -113,16 +113,19 @@ def test_can_random(expect, fkmsg,  # fixtures
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
         len_fd, len_nonfd = len(sent_msgs), len(nonfd_msgs)
-        rxis_n = [(rxi, len_fd if rxi.fd_capable else len_nonfd)
-                  for rxi in rxis]
-        received_msgs = _send_msgs_sync(rxis_n, [(txi, sent_msgs)], fd=fd)
+        buses = [ifc.open(fd=fd and ifc.fd_capable) for ifc in all_ifcs]
+        rxis_bus_n = [(rxi, bus, len_fd if rxi.fd_capable else len_nonfd)
+                      for rxi, bus in zip(rxis, buses[1:])]
+        received_msgs = _send_msgs_sync(rxis_bus_n, [(txi, buses[0], sent_msgs)], fd=fd)
+        for bus in buses:
+            bus.shutdown()
 
         _check_messages_match(received_msgs, sent_msgs, nonfd_msgs, rxis,
                               expect=expect)
 
 
-def _send_msgs_sync(rxis_n: List[Tuple[CANInterface, int]],
-                    txis_msgs: List[Tuple[CANInterface, Iterable[can.Message]]],
+def _send_msgs_sync(rxis_bus_n: List[Tuple[CANInterface, Any, int]],
+                    txis_bus_msgs: List[Tuple[CANInterface, Any, Iterable[can.Message]]],
                     fd) -> List[List[can.Message]]:
     """Send messages to `txi`, receive them on `rxis` and return a list
        of lists.
@@ -134,12 +137,11 @@ def _send_msgs_sync(rxis_n: List[Tuple[CANInterface, int]],
     """
     sel = selectors.DefaultSelector()
     recs = []
-    for rxi, nmsgs in rxis_n:
-        rxi_fd = fd if rxi.fd_capable else False
-        receiver = MessageReceiver(rxi, nmsgs, fd=rxi_fd, sel=sel)
+    for rxi, bus, nmsgs in rxis_bus_n:
+        receiver = MessageReceiver(ifc=rxi, N=nmsgs, bus=bus, sel=sel)
         recs.append(receiver)
-    for txi, msgs in txis_msgs:
-        MessageSender(txi, msgs, fd=fd, sel=sel)
+    for txi, bus, msgs in txis_bus_msgs:
+        MessageSender(ifc=txi, bus=bus, msgs=msgs, sel=sel)
 
     # while there are some handlers registered ...
     while sel.get_map():
@@ -166,18 +168,18 @@ def _check_messages_match(received_msgs: List[List[can.Message]],
     for rxi, rms, sms in rxi_rms_sms:
         msg = "{}: received frame count not equal to sent frame count".format(rxi.ifc)
         expect(len(rms) == len(sms), msg)
-        print('{}: expected'.format(rxi.ifc))
-        for msg in sms:
-            print(msg)
-        print('{}: received'.format(rxi.ifc))
-        for msg in rms:
-            msg.timestamp = 0
-            print(msg)
+        # print('{}: expected'.format(rxi.ifc))
+        # for msg in sms:
+        #     print(msg)
+        # print('{}: received'.format(rxi.ifc))
+        # for msg in rms:
+        #     msg.timestamp = 0
+        #     print(msg)
 
         for i, (received, sent) in enumerate(zip(rms, sms)):
             if received != sent:
-                # log.info('Sent: {}'.format(sent.__dict__))
-                # log.info('Received: {}'.format(received.__dict__))
+                log.info('Sent: {}'.format(sent.__dict__))
+                log.info('Received: {}'.format(received.__dict__))
                 # received.timestamp = 0
                 # print('S:', sent)
                 # print('R:', received)
@@ -293,9 +295,14 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
 
     all_ifcs = [cafd[0], cafd[1]]
     with _cm_setup_and_check_stats_and_kmsg(**locals()):
-        rxis_n = [(ifc, NMSGS) for ifc in all_ifcs]
-        txis_msgs = [(ifc, genmsgs(id=id+1, fd=fd and ifc.fd_capable)) for id, ifc in enumerate(all_ifcs)]
-        received_msgs = _send_msgs_sync(rxis_n, txis_msgs, fd=fd)
+        buses = [ifc.open(fd=fd and ifc.fd_capable) for ifc in all_ifcs]
+        rxis_bus_n = [(ifc, bus, NMSGS) for ifc, bus in zip(all_ifcs, buses)]
+        txis_bus_msgs = [(ifc, bus, genmsgs(id=id+1, fd=fd and ifc.fd_capable))
+                         for id, (ifc, bus) in enumerate(zip(all_ifcs, buses))]
+        received_msgs = _send_msgs_sync(rxis_bus_n, txis_bus_msgs, fd=fd)
+        for bus in buses:
+            bus.shutdown()
 
-        check_messages_match(received_msgs[0], txis_msgs[1][1], rxis_n[0][0])
-        check_messages_match(received_msgs[1], txis_msgs[0][1], rxis_n[1][0])
+
+        check_messages_match(received_msgs[0], txis_bus_msgs[1][2], rxis_bus_n[0][0])
+        check_messages_match(received_msgs[1], txis_bus_msgs[0][2], rxis_bus_n[1][0])

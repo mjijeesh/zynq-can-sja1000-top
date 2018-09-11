@@ -12,6 +12,7 @@ import selectors
 import errno
 import copy
 from typing import List
+import os  # dup
 
 IP_BIN = '/devel/ip'
 if not Path(IP_BIN).exists():
@@ -177,7 +178,6 @@ def deterministic_frame_sequence(nmsgs: int, id: int, fd: bool) -> List[can.Mess
         canid = ((id&3) << 8) | (i & 0xFF)
         msg = can.Message(arbitration_id=canid, data=data, dlc=xlen,
                           extended_id=ext, is_fd=xfd, bitrate_switch=brs)
-        print(msg)
         msgs.append(msg)
     return msgs
 
@@ -217,7 +217,7 @@ class MessageReceiver:
 
     TODO: also accept error frames?
     """
-    def __init__(self, ifc, N, fd, sel):
+    def __init__(self, bus, ifc, N, sel):
         """
         :param ifc: the CANInterface to recv from
         :param N: number of messages to recv
@@ -225,8 +225,7 @@ class MessageReceiver:
         :param sel: selector instance
         """
         self.messages = []
-        self.bus = ifc.open(fd=fd)
-        self.bus.socket.setsockopt(SOL_CAN_RAW, CAN_RAW_LOOPBACK, 0)
+        self.bus = bus
         self.gen = receive_messages(ifc, self.bus, N)
         self.sel = sel
         self.N = N
@@ -247,8 +246,6 @@ class MessageReceiver:
     def close(self):
         if self.bus:
             self.sel.unregister(self.bus.socket)
-            self.bus.shutdown()
-            self.bus = None
 
 
 def send_messages(ifc, bus, msgs):
@@ -270,17 +267,23 @@ def send_messages(ifc, bus, msgs):
 class MessageSender:
     """Send the given messages on ifc."""
 
-    def __init__(self, ifc, msgs, fd, sel):
+    def __init__(self, bus, ifc, msgs, sel):
         """
         :param ifc: the CANInterface to send to
         :param msgs: iterables of messages to send
         :param fd: whether to open the ifc in FD mode or nor
         :param sel: selector instance
         """
-        self.bus = ifc.open(fd=fd)
+        self.bus = bus
         self.gen = send_messages(ifc, self.bus, msgs)
         self.sel = sel
-        sel.register(self.bus.socket, selectors.EVENT_WRITE, data=self)
+        self.fd = None
+        try:
+            sel.register(self.bus.socket, selectors.EVENT_WRITE, data=self)
+        except KeyError:
+            self.fd = os.dup(self.bus.socket.fileno())
+            sel.register(self.fd, selectors.EVENT_WRITE, data=self)
+
 
     def on_event(self):
         try:
@@ -293,6 +296,8 @@ class MessageSender:
 
     def close(self):
         if self.bus:
-            self.sel.unregister(self.bus.socket)
-            self.bus.shutdown()
-            self.bus = None
+            if self.fd is not None:
+                self.sel.unregister(self.fd)
+                os.close(self.fd)
+            else:
+                self.sel.unregister(self.bus.socket)
