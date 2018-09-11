@@ -2,6 +2,7 @@ import attr
 import logging
 import json
 import can
+from can.interfaces.socketcan.constants import * # CAN_RAW, CAN_*_FLAG
 import struct
 import subprocess as sp
 from pathlib import Path
@@ -10,6 +11,7 @@ from contextlib import contextmanager
 import selectors
 import errno
 import copy
+from typing import List
 
 IP_BIN = '/devel/ip'
 if not Path(IP_BIN).exists():
@@ -164,6 +166,23 @@ def rand_can_frame(fgpar: FrameGenParams) -> can.Message:
     return msg
 
 
+def deterministic_frame_sequence(nmsgs: int, id: int, fd: bool) -> List[can.Message]:
+    msgs = []
+    for i in range(nmsgs):
+        ext = (i % 2) == 1
+        xfd = fd and (i % 4)/2 == 1
+        brs = xfd and (i % 4) == 3
+        xlen = (i * 2) % 9
+        data = (i & ((1 << xlen) - 1)).to_bytes(xlen, byteorder='little')
+        canid = ((id&3) << 8) | (i & 0xFF)
+        msg = can.Message(arbitration_id=canid, data=data, dlc=xlen,
+                          extended_id=ext, is_fd=xfd, bitrate_switch=brs)
+        print(msg)
+        msgs.append(msg)
+    return msgs
+
+
+
 @contextmanager
 def dmesg_into(fout):
     """Capture kernel messages to file-like fout. Acts as a context manager.
@@ -207,6 +226,7 @@ class MessageReceiver:
         """
         self.messages = []
         self.bus = ifc.open(fd=fd)
+        self.bus.socket.setsockopt(SOL_CAN_RAW, CAN_RAW_LOOPBACK, 0)
         self.gen = receive_messages(ifc, self.bus, N)
         self.sel = sel
         self.N = N

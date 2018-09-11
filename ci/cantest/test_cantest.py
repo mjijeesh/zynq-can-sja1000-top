@@ -8,7 +8,8 @@ import pytest
 from contextlib import contextmanager
 from . import kmsg
 from .common import (get_can_interfaces, rand_can_frame, MessageReceiver,
-                     MessageSender, CANInterface, FrameGenParams)
+                     deterministic_frame_sequence, MessageSender, CANInterface,
+                     FrameGenParams)
 from typing import List, Tuple, Iterable
 import can
 
@@ -165,10 +166,22 @@ def _check_messages_match(received_msgs: List[List[can.Message]],
     for rxi, rms, sms in rxi_rms_sms:
         msg = "{}: received frame count not equal to sent frame count".format(rxi.ifc)
         expect(len(rms) == len(sms), msg)
+        print('{}: expected'.format(rxi.ifc))
+        for msg in sms:
+            print(msg)
+        print('{}: received'.format(rxi.ifc))
+        for msg in rms:
+            msg.timestamp = 0
+            print(msg)
+
         for i, (received, sent) in enumerate(zip(rms, sms)):
             if received != sent:
-                log.info('Sent: {}'.format(sent.__dict__))
-                log.info('Received: {}'.format(received.__dict__))
+                # log.info('Sent: {}'.format(sent.__dict__))
+                # log.info('Received: {}'.format(received.__dict__))
+                # received.timestamp = 0
+                # print('S:', sent)
+                # print('R:', received)
+                pass
             msg = "{}: Received message {} not equal to sent!".format(rxi.ifc, i)
             expect(sent == received, msg)
 
@@ -270,9 +283,10 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
     :param dbitrate: data bitrate (for CAN FD)
     """
 
-    def genmsgs(fd):
-        fgp = fgpar.mask_fd(fd)
-        return [rand_can_frame(fgp) for _ in range(NMSGS)]
+    def genmsgs(id, fd):
+        # fgp = fgpar.mask_fd(fd)
+        # return [rand_can_frame(fgp) for _ in range(NMSGS)]
+        return deterministic_frame_sequence(NMSGS, id=id, fd=fd)
 
     def check_messages_match(rec, sent, rxi):
         _check_messages_match([rec], sent, sent, [rxi], expect=expect)
@@ -280,7 +294,7 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
     all_ifcs = [cafd[0], cafd[1]]
     with _cm_setup_and_check_stats_and_kmsg(**locals()):
         rxis_n = [(ifc, NMSGS) for ifc in all_ifcs]
-        txis_msgs = [(ifc, genmsgs(fd=ifc.fd_capable)) for ifc in all_ifcs]
+        txis_msgs = [(ifc, genmsgs(id=id+1, fd=fd and ifc.fd_capable)) for id, ifc in enumerate(all_ifcs)]
         received_msgs = _send_msgs_sync(rxis_n, txis_msgs, fd=fd)
 
         check_messages_match(received_msgs[0], txis_msgs[1][1], rxis_n[0][0])
