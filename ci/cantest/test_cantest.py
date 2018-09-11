@@ -239,7 +239,7 @@ def _check_kmsg(*, expect, fkmsg: kmsg.Kmsg):
     }
     for msg in msgs:
         func = pri2func.get(msg.pri, log.error)
-        func('<{}>[{:10.6f}]  {}'.format(msg.pri, msg.timestamp/1e9,
+        func('<{}>[{:10.6f}]  {}'.format(msg.pri, msg.timestamp,
                                          msg.msg))
     expect(len(msgs) == 0, "There were kernel errors/warnings.")
 

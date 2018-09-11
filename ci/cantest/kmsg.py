@@ -5,6 +5,7 @@
 import os
 import fcntl
 import errno
+import time
 
 # log level
 (LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARN,
@@ -83,7 +84,7 @@ def parse_msg(msg):
     facpri, seq, time, *other = header.split(",")
     facpri = int(facpri)
     seq = int(seq)
-    time = int(time)
+    time = int(time) / 1e6
     # tags
     msg, *tags = msg.split('\n')
     tags = dict(tag[1:].split('=', 1) for tag in tags if tag)
@@ -102,6 +103,7 @@ class Kmsg:
     def __init__(self, seek_to_end=False, base_timestamp=False):
         self.base_timestamp = base_timestamp
         self.file = open("/dev/kmsg", "rb", buffering=0)
+        self.last_seqnum = None
         fcntl.fcntl(self.file.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         if seek_to_end:
             self.seek_to_end()
@@ -112,6 +114,7 @@ class Kmsg:
 
     def seek_to_end(self):
         os.lseek(self.file.fileno(), 0, os.SEEK_END)
+        self.last_seqnum = None
 
     def reset_base_timestamp(self, base_timestamp=None):
         self.base_timestamp = base_timestamp
@@ -120,6 +123,8 @@ class Kmsg:
         while True:
             try:
                 msg = self.file.read(BUF_SIZE)
+            except BrokenPipeError:
+                continue
             except OSError as e:
                 if e.errno == errno.EAGAIN:
                     break
@@ -132,6 +137,19 @@ class Kmsg:
                 self.base_timestamp = msg['timestamp']
             if self.base_timestamp is not False:
                 msg['timestamp'] -= self.base_timestamp
+            if self.last_seqnum is not None:
+                lost = msg.seqnum - self.last_seqnum - 1
+                if lost:
+                    yield ObjectLikeDict({
+                        "fac": LOG_SYSLOG,
+                        "pri": LOG_WARN,
+                        "seqnum": None,
+                        "timestamp": time.time(),
+                        "other": None,
+                        "tags": [],
+                        "msg": '{} messages lost'.format(lost)
+                    })
+            self.last_seqnum = msg.seqnum
             yield msg
 
 
