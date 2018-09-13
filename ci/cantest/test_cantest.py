@@ -10,9 +10,12 @@ from . import kmsg
 from .common import (get_can_interfaces, rand_can_frame, MessageReceiver,
                      deterministic_frame_sequence, MessageSender, CANInterface,
                      FrameGenParams)
+from .utils import Transaction
 from typing import List, Tuple, Iterable, Any
 import can
-
+from can.interfaces.socketcan.constants import * # CAN_RAW, CAN_*_FLAG
+import time
+import errno
 
 @pytest.fixture(scope='module')
 def fkmsg():
@@ -87,7 +90,7 @@ if not cafd and not sja:
     (cafd[0], [cafd[1], sja[0]], "non-iso")], ids=mkid)
 @pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5)])
 @pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
-@pytest.mark.parametrize('NMSGS', [(1000)])
+@pytest.mark.parametrize('NMSGS', [(10)])
 @run_setup_teardown
 def test_can_random(expect, fkmsg,  # fixtures
                     txi, rxis, fd, NMSGS, bitrate, dbitrate, fgpar):
@@ -194,6 +197,7 @@ def _check_ifc_stats(ifc, pretest_info, *, expect):
 
     def fix_info(g):
         for k in g(info).keys():
+            logging.info('{}: {} - {} = {}'.format(k, g(info)[k], g(pretest_info)[k], g(info)[k]-g(pretest_info)[k]))
             g(info)[k] -= g(pretest_info)[k]
 
     fix_info(lambda i: i['linkinfo']['info_xstats'])
@@ -202,7 +206,7 @@ def _check_ifc_stats(ifc, pretest_info, *, expect):
 
     def assert_zero(prefix, arr, keys):
         for k in keys:
-            msg = '{}: {}{} should be 0'.format(ifc.ifc, prefix, k)
+            msg = '{}: {}{} should be 0 but is {}'.format(ifc.ifc, prefix, k, arr[k])
             expect(arr[k] == 0, msg)
 
     assert_zero('xstats.', info['linkinfo']['info_xstats'],
@@ -246,8 +250,10 @@ def _check_kmsg(*, expect, fkmsg: kmsg.Kmsg):
 
 @contextmanager
 def _cm_setup_and_check_stats_and_kmsg(*, expect, fkmsg, fd, bitrate, dbitrate,
-                                       fgpar, all_ifcs, **kwds):
-    fgpar.mask_fd_inplace(fd)
+                                       fgpar=None, all_ifcs, ck_stats=True,
+                                       ck_kmsg=True, **kwds):
+    if fgpar is not None:
+        fgpar.mask_fd_inplace(fd)
     if not fd:
         dbitrate = None
 
@@ -259,24 +265,24 @@ def _cm_setup_and_check_stats_and_kmsg(*, expect, fkmsg, fd, bitrate, dbitrate,
     yield
 
     # check that no error condition occured
-    for ifc, pretest_info in zip(all_ifcs, pretest_infos):
-        _check_ifc_stats(ifc, pretest_info, expect=expect)
+    if ck_stats:
+        for ifc, pretest_info in zip(all_ifcs, pretest_infos):
+            _check_ifc_stats(ifc, pretest_info, expect=expect)
 
     # check that no warning or error was logged in dmesg
-    _check_kmsg(expect=expect, fkmsg=fkmsg)
+    if ck_kmsg:
+        _check_kmsg(expect=expect, fkmsg=fkmsg)
 
 
 @pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5)])
 @pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
 @pytest.mark.parametrize('NMSGS', [(1000)])
-@pytest.mark.parametrize('fd', [(False)])
+@pytest.mark.parametrize('fd', [(True)])
 @run_setup_teardown
 def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
                            fd, NMSGS, bitrate, dbitrate, fgpar):
     """Generic test method.
 
-    :param txis: TX interfaces
-    :param rxis: list of RX interfaces
     :param fd: whether to enable FD mode and FD messages; True for iso fd,
                "non-iso" for non-iso fd, False to disable.
     :param fgpar: FrameGenParams
@@ -306,3 +312,85 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
 
         check_messages_match(received_msgs[0], txis_bus_msgs[1][2], rxis_bus_n[0][0])
         check_messages_match(received_msgs[1], txis_bus_msgs[0][2], rxis_bus_n[1][0])
+
+
+@pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
+@pytest.mark.parametrize('fd', [(False)])
+@run_setup_teardown
+def test_cafd_rx_overrun(expect, fkmsg,  # fixtures
+                         fd, bitrate, dbitrate):
+    """Generic test method.
+
+    :param fd: whether to enable FD mode and FD messages; True for iso fd,
+               "non-iso" for non-iso fd, False to disable.
+    :param fgpar: FrameGenParams
+    :param NMSGS: how many messages to send
+    :param bitrate: nominal bitrate
+    :param dbitrate: data bitrate (for CAN FD)
+    """
+
+    txi = cafd[0]
+    rxi = cafd[1]
+    log = logging.getLogger('test.cafd_rx_overrun')
+    all_ifcs = [txi, rxi]
+    with _cm_setup_and_check_stats_and_kmsg(**locals()), Transaction() as tx:
+        buses = [ifc.open(fd=fd and ifc.fd_capable) for ifc in all_ifcs]
+        tx.on_cleanup(lambda: [bus.shutdown() for bus in buses])
+        txb, rxb = buses
+
+        # receive errors on rxi
+        rxb.socket.setsockopt(SOL_CAN_RAW, CAN_RAW_ERR_FILTER, 1)
+        rxi.mask_rx(True)
+        tx.on_cleanup(lambda: rxi.mask_rx(False))
+
+        msgs = []
+        sel = selectors.SelectSelector()
+        sel.register(rxb.socket.fileno(), selectors.EVENT_READ)
+        tx.on_cleanup(lambda: sel.unregister(rxb.socket))
+
+        sel2 = selectors.SelectSelector()
+        sel2.register(txb.socket, selectors.EVENT_WRITE)
+        tx.on_cleanup(lambda: sel2.unregister(txb.socket))
+        errmsg = None
+        for msg in deterministic_frame_sequence(50, id=0, fd=False):
+            while True:
+                res = sel2.select(timeout=1.0)
+                if not res:
+                    raise RuntimeError("send timeout")
+                log.info(repr(res))
+                try:
+                    txb.send(msg)
+                except can.CanError as e:
+                    if e.__context__.errno == errno.ENOBUFS:
+                        log.warning('ENOBUFS, but res = {}'.format(res))
+                        time.sleep(0.01)
+                        continue
+                    else:
+                        raise
+                break
+            res = sel.select(timeout=0)
+            log.info('rx select res = {}'.format(res))
+            if res:
+                errmsg = rxb.recv()
+                log.info(repr(errmsg.__dict__))
+                break
+            msgs.append(msg)
+        print(rxb.recv())
+        assert errmsg is not None
+        log.info('Sent {} messages until overflow was reached'.format(len(msgs)))
+
+
+        """
+        - ioctl on rxb to disable reception (mask RXBNEI)
+        - do:
+            send frame on txb
+            try receive on rxb
+          until frame received # error frame
+        - check that it's overload frame
+        - try to read another frame
+          - there should not be any (testcase: overload is handled only once)
+        - send another frame
+        - try to read frame
+          - there should be overload frame (testcase: overload is triggered for every frame)
+        - cleanup: ioctl on rxb to enable reception
+        """

@@ -1,6 +1,7 @@
 import attr
 import logging
 import json
+# from . import cantestmod  # monkey-patch the bus interface
 import can
 from can.interfaces.socketcan.constants import * # CAN_RAW, CAN_*_FLAG
 import struct
@@ -13,6 +14,8 @@ import errno
 import copy
 from typing import List
 import os  # dup
+import fcntl  # ioctl
+
 
 IP_BIN = '/devel/ip'
 if not Path(IP_BIN).exists():
@@ -59,6 +62,10 @@ class CANInterface:
             cmd += ['fd', 'on' if fd else 'off']
         log.info('{}: {}'.format(self.ifc, ' '.join(cmd)))
         run(cmd)
+
+        # needed so that blocking IO works
+        run([IP_BIN, 'link', 'set', self.ifc, 'txqueuelen', str(1000)])
+
         run([IP_BIN, 'link', 'set', self.ifc, 'up'])
 
     def set_down(self):
@@ -74,6 +81,18 @@ class CANInterface:
     def open(self, **kwds):
         """Open and return a raw CAN socket (can.interface.Bus)."""
         return can.interface.Bus(channel=self.ifc, bustype='socketcan', **kwds)
+
+    def mask_rx(self, mask: bool):
+        if self.type != 'ctucanfd':
+            raise TypeError('mask_rx supported only on ctucanfd ifc')
+        with self.open() as f:
+            SIOCDEVPRIVATE = 0x89F0
+            IFNAMSIZ = 16
+            IOF_SIZE = 32
+            CTUCAN_IOCDBG_MASKRX = SIOCDEVPRIVATE
+            arg = struct.pack('@{}sH'.format(IFNAMSIZ), self.ifc.encode('ascii'), int(mask))
+            arg += bytes(IOF_SIZE - len(arg))
+            fcntl.ioctl(f.socket.fileno(), CTUCAN_IOCDBG_MASKRX, arg)
 
 
 @attr.s
@@ -180,7 +199,6 @@ def deterministic_frame_sequence(nmsgs: int, id: int, fd: bool) -> List[can.Mess
                           extended_id=ext, is_fd=xfd, bitrate_switch=brs)
         msgs.append(msg)
     return msgs
-
 
 
 @contextmanager

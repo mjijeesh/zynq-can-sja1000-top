@@ -13,3 +13,9 @@ def setup_logging():
         cfg = yaml.safe_load(f)
     logging.setLogRecordFactory(MyLogRecord)
     logging.config.dictConfig(cfg)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_can_monkeypatch():
+    from .cantestmod import monkeypatch
+    monkeypatch()
