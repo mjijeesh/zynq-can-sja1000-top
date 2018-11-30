@@ -27,7 +27,6 @@ entity top_hdl is
         FPGA_IO_A : inout STD_LOGIC_VECTOR ( 10 downto 1 );
         FPGA_IO_B : inout STD_LOGIC_VECTOR ( 28 downto 13 );
         FPGA_IO_C : inout STD_LOGIC_VECTOR ( 40 downto 31 );
-        reset_rtl : in STD_LOGIC
     );
 end entity;
 
@@ -227,7 +226,6 @@ begin
         IRQ_F2P                   => std_logic_vector(irqs),
         LA_INP                    => la_inp,
         TIMESTAMP                 => timestamp,
-        reset_rtl                 => reset_rtl
     );
 
     la_inp(0) <= can_rx;

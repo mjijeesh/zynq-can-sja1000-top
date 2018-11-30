@@ -218,10 +218,6 @@ proc create_root_design { parentCell } {
   set ctu_can_fd_0_irq [ create_bd_port -dir O -type intr ctu_can_fd_0_irq ]
   set ctu_can_fd_1_can_tx [ create_bd_port -dir O ctu_can_fd_1_can_tx ]
   set ctu_can_fd_1_irq [ create_bd_port -dir O -type intr ctu_can_fd_1_irq ]
-  set reset_rtl [ create_bd_port -dir I -type rst reset_rtl ]
-  set_property -dict [ list \
-   CONFIG.POLARITY {ACTIVE_LOW} \
- ] $reset_rtl
   set sja1000_0_can_tx [ create_bd_port -dir O sja1000_0_can_tx ]
   set sja1000_0_irq [ create_bd_port -dir O -type intr sja1000_0_irq ]
   set sja1000_1_can_tx [ create_bd_port -dir O sja1000_1_can_tx ]
@@ -1147,9 +1143,8 @@ proc create_root_design { parentCell } {
   connect_bd_net -net canbench_cc_gpio_0_GPIO_I [get_bd_pins canbench_cc_gpio_0/GPIO_I] [get_bd_pins processing_system7_0/GPIO_I]
   connect_bd_net -net la_inp_0_1 [get_bd_ports LA_INP] [get_bd_pins zlogan_capt_0/la_inp]
   connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_ports FCLK_CLK0_0] [get_bd_pins CTU_CAN_FD_0/aclk] [get_bd_pins CTU_CAN_FD_1/aclk] [get_bd_pins axi_apb_bridge_0/s_axi_aclk] [get_bd_pins axi_dma_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_0/s_axi_lite_aclk] [get_bd_pins axi_smc/aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/aclk] [get_bd_pins sja1000_1/aclk] [get_bd_pins zlogan_capt_0/aclk] [get_bd_pins zlogan_capt_0/m00_axis_aclk]
-  connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_ports FCLK_RESET0_N_0] [get_bd_pins processing_system7_0/FCLK_RESET0_N]
+  connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_ports FCLK_RESET0_N_0] [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_processing_system7_0_100M/ext_reset_in]
   connect_bd_net -net processing_system7_0_GPIO_O [get_bd_pins canbench_cc_gpio_0/GPIO_O] [get_bd_pins processing_system7_0/GPIO_O]
-  connect_bd_net -net reset_rtl_1 [get_bd_ports reset_rtl] [get_bd_pins rst_processing_system7_0_100M/ext_reset_in]
   connect_bd_net -net rst_processing_system7_0_100M_interconnect_aresetn [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins rst_processing_system7_0_100M/interconnect_aresetn]
   connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/arstn] [get_bd_pins CTU_CAN_FD_1/arstn] [get_bd_pins axi_apb_bridge_0/s_axi_aresetn] [get_bd_pins axi_dma_0/axi_resetn] [get_bd_pins axi_smc/aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/arstn] [get_bd_pins sja1000_1/arstn] [get_bd_pins zlogan_capt_0/arstn] [get_bd_pins zlogan_capt_0/m00_axis_aresetn]
   connect_bd_net -net sja1000_0_can_tx [get_bd_ports sja1000_0_can_tx] [get_bd_pins sja1000_0/can_tx]
