@@ -1,14 +1,13 @@
 import can
 import socket
 import struct
-import time
-import errno
 import ctypes
-import fcntl
 from ctypes import *
 import can.interfaces.socketcan.socketcan as socketcan
-from can.interfaces.socketcan.socketcan import build_can_frame, dissect_can_frame, log, log_rx, log_tx, error_code_to_str
-from can.interfaces.socketcan.constants import * # CAN_RAW, CAN_*_FLAG
+from can.interfaces.socketcan.socketcan import (build_can_frame, dissect_can_frame,
+                                                log, log_rx, log_tx,
+                                                error_code_to_str)
+from can.interfaces.socketcan.constants import *  # CAN_RAW, CAN_*_FLAG
 from contextlib import contextmanager
 
 
@@ -32,6 +31,7 @@ SOF_TIMESTAMPING_OPT_TX_SWHW = (1<<14)
 SO_TIMESTAMPNS = 35
 SO_TIMESTAMPING = 37
 SO_RXQ_OVFL = 40
+
 
 def timespec2double(ts):
     sec, nsec = struct.unpack('@ll', ts)
@@ -121,12 +121,15 @@ def check_status(result, function, arguments):
         raise can.CanError(error_code_to_str(ctypes.get_errno()))
     return result
 
+
 libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 libc.sendmmsg.errcheck = check_status
 
 
 class iovec(Structure):
     _fields_ = [('iov_base', c_void_p), ('iov_len', c_size_t)]
+
+
 class msg_hdr(Structure):
     _fields_ = [('msg_name', c_void_p),
                 ('msg_namelen', c_int),
@@ -230,7 +233,9 @@ def sock_init(self, *args, **kwds):
                            so_timestamping_flags)
     self.socket.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPNS, 1)
 
+
 _base_init = socketcan.SocketcanBus.__init__
+
 
 def monkeypatch():
     # cannot extend, because the reference to the original class is already loaded somewhere
