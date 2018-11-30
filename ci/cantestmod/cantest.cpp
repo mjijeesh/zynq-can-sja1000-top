@@ -16,6 +16,9 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h> // memset
+//#include <stropts.h> // ioctl
+#include <linux/sockios.h> // ioctl
+#include <linux/errqueue.h> // scm_timestamping
 
 #include <linux/can/raw.h>
 #include <linux/net_tstamp.h>
@@ -84,18 +87,17 @@ received_frame receive(int s)
          cmsg && (cmsg->cmsg_level == SOL_SOCKET);
          cmsg = CMSG_NXTHDR(&msg,cmsg)) {
         if (cmsg->cmsg_type == SO_TIMESTAMPNS) {
+            struct timespec tmp;
+            memcpy(&tmp, CMSG_DATA(cmsg), sizeof(struct timespec));
+            LOG_F(INFO, "timestamp_ns = %llu", ts2ns(tmp));
             if (!res.ts_kern) {
-                struct timespec tmp;
-                memcpy(&tmp, CMSG_DATA(cmsg), sizeof(struct timespec));
-                LOG_F(INFO, "timestamp_ns = %llu", ts2ns(tmp));
                 res.ts_kern = ts2ns(tmp);
             }
         } else if (cmsg->cmsg_type == SO_TIMESTAMPING) {
-            struct timespec *ts = (struct timespec *) CMSG_DATA(cmsg);
-            struct timespec tmp;
-            memcpy(&tmp, &ts[2], sizeof(struct timespec));
-            LOG_F(INFO, "timestamping = %llu", ts2ns(tmp));
-            res.ts_kern = ts2ns(tmp);
+            struct scm_timestamping tmp;
+            memcpy(&tmp, CMSG_DATA(cmsg), sizeof(struct scm_timestamping));
+            LOG_F(INFO, "timestamping = {%llu, %llu, %llu}", ts2ns(tmp.ts[0]), ts2ns(tmp.ts[1]), ts2ns(tmp.ts[2]));
+            res.ts_kern = ts2ns(tmp.ts[2]);
         }/* else if (cmsg->cmsg_type == SO_RXQ_OVFL) {
             uint32_t ovfl;
             memcpy(&ovfl, CMSG_DATA(cmsg), sizeof(ovfl));
@@ -122,8 +124,25 @@ int can_open(const char *ifc)
     if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         throw error {errno, "bind"};
 
-    SET_SOCKOPT(s, SOL_SOCKET, SO_TIMESTAMPING, SOF_TIMESTAMPING_RX_HARDWARE);
+    //uint32_t so_timestamping_flags = SOF_TIMESTAMPING_RX_HARDWARE;
+    uint32_t so_timestamping_flags = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE | SOF_TIMESTAMPING_SOFTWARE;
     SET_SOCKOPT(s, SOL_SOCKET, SO_TIMESTAMPNS, 1);
+
+    struct ifreq hwtstamp;
+	struct hwtstamp_config hwconfig;
+
+    memset(&hwtstamp, 0, sizeof(hwtstamp));
+    strncpy(hwtstamp.ifr_name, ifc, sizeof(hwtstamp.ifr_name));
+    hwtstamp.ifr_data = (char*) &hwconfig;
+    memset(&hwconfig, 0, sizeof(hwconfig));
+    hwconfig.tx_type = (so_timestamping_flags & SOF_TIMESTAMPING_TX_HARDWARE) ?
+                        HWTSTAMP_TX_ON : HWTSTAMP_TX_OFF;
+    hwconfig.rx_filter = (so_timestamping_flags & SOF_TIMESTAMPING_RX_HARDWARE) ?
+                        HWTSTAMP_FILTER_PTP_V1_L4_SYNC : HWTSTAMP_FILTER_NONE;
+    if (ioctl(s, SIOCSHWTSTAMP, &hwtstamp) < 0)
+        LOG_F(ERROR, "SIOCSHWTSTAMP: %s", strerror(errno));
+
+    SET_SOCKOPT(s, SOL_SOCKET, SO_TIMESTAMPING, so_timestamping_flags);
 
     /*
     const int dropmonitor_on = 1;
@@ -137,7 +156,8 @@ int can_open(const char *ifc)
 void test_2(int sock)
 {
     int res;
-    struct can_frame frm = {0};
+    struct can_frame frm;
+    memset(&frm, 0, sizeof(frm));
     frm.can_id = 0x123;
     frm.can_dlc = 4;
     frm.data[0] = 0xDE;
@@ -162,7 +182,8 @@ void test_2(int sock)
 void test_3(int sock)
 {
     int res;
-    struct can_frame frm = {0};
+    struct can_frame frm;
+    memset(&frm, 0, sizeof(frm));
     frm.can_id = 0x123;
     frm.can_dlc = 4;
     frm.data[0] = 0xDE;
@@ -191,8 +212,9 @@ void test_3(int sock)
 
 void test_1(int sock)
 {
-    struct can_frame frm = {0};
+    struct can_frame frm;
     int res;
+    memset(&frm, 0, sizeof(frm));
     frm.can_id = 0x123;
     frm.can_dlc = 4;
     frm.data[0] = 0xDE;
