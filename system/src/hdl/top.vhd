@@ -26,7 +26,7 @@ entity top_hdl is
         FIXED_IO_ps_srstb : inout STD_LOGIC;
         FPGA_IO_A : inout STD_LOGIC_VECTOR ( 10 downto 1 );
         FPGA_IO_B : inout STD_LOGIC_VECTOR ( 28 downto 13 );
-        FPGA_IO_C : inout STD_LOGIC_VECTOR ( 40 downto 31 );
+        FPGA_IO_C : inout STD_LOGIC_VECTOR ( 40 downto 31 )
     );
 end entity;
 
@@ -225,7 +225,7 @@ begin
         FCLK_RESET0_N_0           => arstn,
         IRQ_F2P                   => std_logic_vector(irqs),
         LA_INP                    => la_inp,
-        TIMESTAMP                 => timestamp,
+        TIMESTAMP                 => timestamp
     );
 
     la_inp(0) <= can_rx;
