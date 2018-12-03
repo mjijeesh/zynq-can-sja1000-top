@@ -1,7 +1,7 @@
 set jobs [exec "nproc"]
 puts "Using $jobs jobs."
 
-open_project ../project/canbench.xpr
+open_project ../project/zynq-can-top.xpr
 reset_run synth_1
 reset_run impl_1
 
@@ -19,7 +19,7 @@ upgrade_ip [get_ips]
 #}
 #launch_run -jobs $jobs {top_rst_processing_system7_0_100M_0_synth_1 top_processing_system7_0_1_synth_1 top_can_merge_0_1_synth_1}
 #launch_run -jobs $jobs [get_ips]
-#export_simulation -of_objects $obj -directory ../project/canbench.ip_user_files/sim_scripts -force -quiet
+#export_simulation -of_objects $obj -directory ../project/zynq-can-top.ip_user_files/sim_scripts -force -quiet
 
 launch_runs synth_1 -jobs $jobs
 wait_on_run synth_1
@@ -27,8 +27,8 @@ launch_runs impl_1 -jobs $jobs
 wait_on_run impl_1
 launch_runs impl_1 -jobs $jobs -to_step write_bitstream
 wait_on_run impl_1
-file copy -force ../project/canbench.runs/impl_1/top_wrapper.hwdef ../system.hdf
-file copy -force ../project/canbench.runs/impl_1/top_wrapper.bit ../system.bit
+file copy -force ../project/zynq-can-top.runs/impl_1/top_wrapper.hwdef ../system.hdf
+file copy -force ../project/zynq-can-top.runs/impl_1/top_wrapper.bit ../system.bit
 
 set d "../project"
 
