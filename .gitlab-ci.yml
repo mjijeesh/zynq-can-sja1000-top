@@ -82,7 +82,7 @@ pull-submodules:
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}
         - git submodule update --remote --merge modules/CTU_CAN_FD modules/sja1000
-        - (cd modules/zlogan && git pull origin zlogan-component)
+        # - (cd modules/zlogan && git pull origin zlogan-component)
         - "git commit -q -m 'auto: modules update' -a || true"
         - git push || true
 variables:
