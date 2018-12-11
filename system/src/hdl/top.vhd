@@ -183,8 +183,15 @@ architecture structure of top_hdl is
     signal timestamp : std_logic_vector(63 downto 0);
 
     signal la_inp : std_logic_vector(31 downto 0);
+    signal irq_f2p : std_logic_vector(3 downto 0);
 begin
     can_rx <= and(std_logic_vector(can_tx));
+
+    -- beware of concatenation and to/downto
+    irq_f2p(0) <= irqs(IRQ_SJA1000_0);
+    irq_f2p(1) <= irqs(IRQ_CTUCANFD_0);
+    irq_f2p(2) <= irqs(IRQ_CTUCANFD_1);
+    irq_f2p(3) <= irqs(IRQ_SJA1000_1);
 
     i_top: entity work.top_wrapper
     port map (
@@ -223,7 +230,7 @@ begin
         ctu_can_fd_1_irq          => irqs(IRQ_CTUCANFD_1),
         FCLK_CLK0_0               => aclk,
         FCLK_RESET0_N_0           => arstn,
-        IRQ_F2P                   => std_logic_vector(irqs),
+        IRQ_F2P                   => irq_f2p,
         LA_INP                    => la_inp,
         TIMESTAMP                 => timestamp
     );
