@@ -74,10 +74,11 @@ pull-submodules:
     only:
         - schedules # on ${MASTER_BRANCH}
         - web
-    script:
+    before_script:
         # Docker specific settings
         - git config --global user.name "Gitlab CI"
         - git config --global user.email "bot@gitlabci"
+    script:
         - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}
@@ -85,6 +86,23 @@ pull-submodules:
         # - (cd modules/zlogan && git pull origin zlogan-component)
         - "git commit -q -m 'auto: modules update' -a || true"
         - git push || true
+
+push-autobuild-stable:
+    tags: [vivado]
+    stage: build
+    only:
+        - schedules # on ${MASTER_BRANCH}
+        - web
+    before_script:
+        # Docker specific settings
+        - git config --global user.name "Gitlab CI"
+        - git config --global user.email "bot@gitlabci"
+    script:
+        - git checkout ${AUTO_BRANCH}_stable && git merge origin/${AUTO_BRANCH}_stable --ff-only
+        - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
+        - git merge origin/${MASTER_BRANCH}
+        - git push || true
+    
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
     MASTER_BRANCH: microzed_apo_canfd_test
