@@ -243,6 +243,7 @@ proc create_root_design { parentCell } {
    CONFIG.c_include_s2mm {1} \
    CONFIG.c_include_sg {0} \
    CONFIG.c_sg_include_stscntrl_strm {0} \
+   CONFIG.c_sg_length_width {23} \
  ] $axi_dma_0
 
   # Create instance: axi_smc, and set properties
