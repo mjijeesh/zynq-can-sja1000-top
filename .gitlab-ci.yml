@@ -12,7 +12,7 @@ build:
     stage: build
     before_script:
         # /opt/xilinx is mounted as docker volume (set in gitlab-runner config file)
-        - source /opt/xilinx/vivado-2017.4/settings.sh
+        - source /opt/xilinx/vivado-2018.2/settings.sh
     script:
         - make system_project
         - make system/system.hdf system/system.bit.bin
@@ -102,7 +102,7 @@ push-autobuild-stable:
         - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
         - git merge origin/${MASTER_BRANCH}
         - git push || true
-    
+
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
     MASTER_BRANCH: microzed_apo_canfd_test
