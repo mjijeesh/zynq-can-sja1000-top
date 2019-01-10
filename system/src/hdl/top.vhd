@@ -62,6 +62,13 @@ architecture structure of top_hdl is
     signal la_inp : std_logic_vector(31 downto 0);
     signal irq_f2p : std_logic_vector(3 downto 0);
 
+    signal ctu_can_fd_0_drv_bus    : std_logic_vector(1023 downto 0);
+    signal ctu_can_fd_0_stat_bus   : std_logic_vector(511 downto 0);
+    signal ctu_can_fd_1_drv_bus    : std_logic_vector(1023 downto 0);
+    signal ctu_can_fd_1_stat_bus   : std_logic_vector(511 downto 0);
+    signal sja1000_0_dbg_vec       : std_logic_vector(4 downto 0);
+    signal sja1000_1_dbg_vec       : std_logic_vector(4 downto 0);
+
     signal can_bus_tx              : std_logic_vector(3 downto 0);
     signal can_bus_rx              : std_logic_vector(3 downto 0);
     signal can_controller_tx       : std_logic_vector(7 downto 0);
@@ -134,6 +141,12 @@ begin
         IRQ_F2P                   => irq_f2p,
         LA_INP                    => la_inp,
         TIMESTAMP                 => timestamp,
+        ctu_can_fd_0_drv_bus      => ctu_can_fd_0_drv_bus,
+        ctu_can_fd_0_stat_bus     => ctu_can_fd_0_stat_bus,
+        ctu_can_fd_1_drv_bus      => ctu_can_fd_1_drv_bus,
+        ctu_can_fd_1_stat_bus     => ctu_can_fd_1_stat_bus,
+        sja1000_0_dbg_vec         => sja1000_0_dbg_vec,
+        sja1000_1_dbg_vec         => sja1000_1_dbg_vec,
         can_bus_tx                => can_bus_tx,
         can_bus_rx                => can_bus_rx,
         can_controller_tx         => can_controller_tx,
@@ -152,5 +165,9 @@ begin
     la_inp( 9) <= irqs(IRQ_CTUCANFD_1);
     la_inp(10) <= irqs(IRQ_SJA1000_0);
     la_inp(11) <= irqs(IRQ_SJA1000_1);
-    la_inp(la_inp'left downto 12) <= (others => '0');
+    la_inp(16 downto 12) <= sja1000_0_dbg_vec;
+    la_inp(21 downto 17) <= sja1000_1_dbg_vec;
+    la_inp(22) <= '1' when ctu_can_fd_0_stat_bus(5 downto 2) = "1001" else '0'; --  STAT_PC_STATE_HIGH downto STAT_PC_STATE_LOW == protocol_type::error
+    la_inp(23) <= '1' when ctu_can_fd_1_stat_bus(5 downto 2) = "1001" else '0'; --  STAT_PC_STATE_HIGH downto STAT_PC_STATE_LOW == protocol_type::error
+    la_inp(la_inp'left downto 24) <= (others => '0');
 end architecture;
