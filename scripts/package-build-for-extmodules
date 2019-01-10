@@ -1,0 +1,55 @@
+#!/bin/bash
+
+#
+# Usage: ./package-build-for-extmodules BUILD_DIRECTORY
+#
+# Source directory is found via symlink $BUILD/source. If it does not exist,
+# it is assumed to be identical to $BUILD.
+#
+# Produces $BUILD-dev.tar.gz archive.
+#
+
+set -eux
+
+BUILD=$1
+[ -d $BUILD/source ] && SRC=$BUILD/source || { echo "Using SRC=\$BUILD."; SRC=$BUILD; }
+
+release="$(make -s -C $BUILD kernelrelease ARCH=arm)"
+tmp=$(mktemp -d kernelpack.XXXXXX)
+trap "rm -R '$tmp'" EXIT
+mkdir $tmp/linux && tmp=$tmp/linux
+mkdir $tmp/build $tmp/source
+
+rsync -a -f 'merge /dev/stdin' $BUILD/ $tmp/build/ <<EOF
++ /arch
++ /arch/arm
++ /arch/arm/include/***
++ /include/***
++ /scripts/***
++ /Makefile
++ /modules.builtin
++ /modules.order
++ /Module.symvers
+- *
+EOF
+ln -s ../source $tmp/build/source
+sed -r -i -e 's~^(MAKEARGS := -C ).*~\1source~' $tmp/build/Makefile
+
+rsync -a -f 'merge /dev/stdin' $SRC/ $tmp/source/ <<EOF
++ Kconfig*
++ /arch
++ /arch/arm
++ /arch/arm/include/***
++ /arch/arm/Makefile
++ /include/***
++ /scripts/***
++ /Makefile
++ /Kbuild
++ /localversion-rt
+- *
+EOF
+
+BUILD="$(realpath "$BUILD")"
+echo ${BUILD}-${release}-dev.tar.gz
+(cd $tmp/.. && tar c * | gzip >${BUILD}-${release}-dev.tar.gz)
+ls $tmp

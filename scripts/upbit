@@ -1,3 +1,30 @@
-#!/bin/sh
+#!/bin/bash
 
-zcat /system.bit.bin.gz >/dev/xdevcfg
+set -eu
+
+OLNAME=pl
+DTBO=${1:-/devel/bitstream+dt.dtbo}
+
+# run dmesg, discard its immediate output and then let it print messages as they happen ...
+cat_relevant_dmesg() {
+	coproc DMESG { dmesg --color=always --follow; }
+	# duplicate to FD 3, because DMESG[0] is not accessible in a subshell
+	exec 3<&"${DMESG[0]}"
+	cat <&3 >/dev/null & sleep .1 && kill $! &>/dev/null
+	cat <&3 &
+	CAT_PID=$!
+	trap 'kill $CAT_PID $DMESG_PID &>/dev/null' EXIT
+}
+
+cat_relevant_dmesg
+
+modprobe dtbocfg
+cd /sys/kernel/config/device-tree/overlays
+[ -d $OLNAME ] && rmdir $OLNAME
+[ -e /lib/firmware ] || ln -s /devel /lib/firmware
+mkdir $OLNAME
+cd $OLNAME
+cat $DTBO >dtbo
+echo 1 >status
+
+

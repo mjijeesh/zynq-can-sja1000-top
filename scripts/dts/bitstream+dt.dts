@@ -1,0 +1,65 @@
+// Device Tree Example: Full Reconfiguration without Bridges
+/dts-v1/;
+/plugin/;
+
+/ {
+    fragment@0 {
+        target-path = "/fpga-full";
+//        #address-cells = <1>;
+//        #size-cells = <1>;
+
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            firmware-name = "system.bit.bin";
+        };
+    };
+
+    fragment@1 {
+        target-path = "/amba";
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            CTU_CAN_FD_0: CTU_CAN_FD@43c30000 {
+                compatible = "ctu,ctucanfd";
+                interrupt-parent = <&intc>;
+                interrupts = <0 30 4>;
+                clocks = <&clkc 15>;
+                //clock-names = "can_clk";
+                reg = <0x43c30000 0x10000>;
+            };
+            CTU_CAN_FD_1: CTU_CAN_FD@43c70000 {
+                compatible = "ctu,ctucanfd";
+                interrupt-parent = <&intc>;
+                interrupts = <0 31 4>;
+                clocks = <&clkc 15>;
+                //clock-names = "can_clk";
+                reg = <0x43c70000 0x10000>;
+            };
+            can_crossbar_0: can_crossbar@43c00000 {
+                compatible = "can-crossbar";
+                reg = <0x43c00000 0x10000>;
+            };
+            sja1000_0: sja1000@43c80000 {
+                compatible = "nxp,sja1000";
+                interrupt-parent = <&intc>;
+                interrupts = <0 29 4>;
+                reg = <0x43c80000 0x10000>;
+                reg-io-width = <4>;
+                status = "okay";
+                nxp,external-clock-frequency = <100000000>;
+            };
+            sja1000_1: sja1000@43c90000 {
+                compatible = "nxp,sja1000";
+                interrupt-parent = <&intc>;
+                interrupts = <0 32 4>;
+                reg = <0x43c90000 0x10000>;
+                reg-io-width = <4>;
+                status = "okay";
+                nxp,external-clock-frequency = <100000000>;
+            };
+        };
+    };
+};
