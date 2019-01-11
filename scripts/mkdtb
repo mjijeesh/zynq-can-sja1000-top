@@ -1,0 +1,5 @@
+#!/bin/bash
+
+/usr/local/bin/dtc -O dtb -b 0 -@ -o dts/zynq-zed-uart0.dt{b,s}
+/usr/local/bin/dtc -O dtb -b 0 -@ -o dts/bitstream+dt.dt{bo,s}
+/usr/local/bin/dtc -O dtb -b 0 -@ -o dts/bitstream-update.dt{bo,s}

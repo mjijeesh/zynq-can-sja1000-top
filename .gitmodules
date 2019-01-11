@@ -9,7 +9,7 @@
 	url = https://gitlab.fel.cvut.cz/canbus/zynq/sja1000-fdtol.git
 [submodule "modules/CTU_CAN_FD"]
 	path = modules/CTU_CAN_FD
-	url = https://gitlab.fel.cvut.cz/illeondr/CAN_FD_IP_Core.git
+	url = https://gitlab.fel.cvut.cz/canbus/ctucanfd_ip_core.git
 [submodule "modules/device-tree-xlnx"]
 	path = modules/device-tree-xlnx
 	url = git://github.com/Xilinx/device-tree-xlnx.git
