@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity top_hdl is
     port (
@@ -24,143 +25,20 @@ entity top_hdl is
         FIXED_IO_ps_clk : inout STD_LOGIC;
         FIXED_IO_ps_porb : inout STD_LOGIC;
         FIXED_IO_ps_srstb : inout STD_LOGIC;
-        FPGA_IO_A : inout STD_LOGIC_VECTOR ( 10 downto 1 );
-        FPGA_IO_B : inout STD_LOGIC_VECTOR ( 28 downto 13 );
-        FPGA_IO_C : inout STD_LOGIC_VECTOR ( 40 downto 31 )
+        CAN1_RXD : in std_logic;
+        CAN2_RXD : in std_logic;
+        CAN1_TXD : out std_logic;
+        CAN2_TXD : out std_logic
     );
 end entity;
 
 architecture structure of top_hdl is
-    component CTU_CAN_FD_v1_0 is
-        generic(
-            use_logger       : boolean                := true;
-            rx_buffer_size   : natural range 4 to 512 := 128;
-            use_sync         : boolean                := true;
-            sup_filtA        : boolean                := true;
-            sup_filtB        : boolean                := true;
-            sup_filtC        : boolean                := true;
-            sup_range        : boolean                := true;
-            logger_size      : natural range 0 to 512 := 8
-        );
-        port(
-            aclk             : in  std_logic;
-            arstn            : in  std_logic;
-
-            irq              : out std_logic;
-            CAN_tx           : out std_logic;
-            CAN_rx           : in  std_logic;
-            time_quanta_clk  : out std_logic;
-            timestamp        : in std_logic_vector(63 downto 0);
-
-            -- Ports of APB4
-            s_apb_paddr      : in  std_logic_vector(31 downto 0);
-            s_apb_penable    : in  std_logic;
-            s_apb_pprot      : in  std_logic_vector(2 downto 0);
-            s_apb_prdata     : out std_logic_vector(31 downto 0);
-            s_apb_pready     : out std_logic;
-            s_apb_psel       : in  std_logic;
-            s_apb_pslverr    : out std_logic;
-            s_apb_pstrb      : in  std_logic_vector(3 downto 0);
-            s_apb_pwdata     : in  std_logic_vector(31 downto 0);
-            s_apb_pwrite     : in  std_logic
-      );
-    end component CTU_CAN_FD_v1_0;
-
-    component sja1000 is
-        port(
-            can_rx        : in  std_logic;
-            can_tx        : out std_logic;
-            bus_off_on    : out std_logic;
-
-            aclk          : in  std_logic;
-            arstn         : in  std_logic;
-
-            s_apb_paddr   : in  std_logic_vector(31 downto 0);
-            s_apb_penable : in  std_logic;
-            s_apb_pprot   : in  std_logic_vector(2 downto 0);
-            s_apb_prdata  : out std_logic_vector(31 downto 0);
-            s_apb_pready  : out std_logic;
-            s_apb_psel    : in  std_logic;
-            s_apb_pslverr : out std_logic;
-            s_apb_pstrb   : in  std_logic_vector(3 downto 0);
-            s_apb_pwdata  : in  std_logic_vector(31 downto 0);
-            s_apb_pwrite  : in  std_logic;
-
-            irq           : out std_logic
-        );
-    end component;
-
-    component zlogan_capt_v1_0 is
-        generic(
-            la_n_inp: natural := 4; -- number of input wires
-            la_b_out: natural := 4; -- output FIFO width (4 or 8 [bytes])
-            C_M00_AXIS_TDATA_WIDTH  : integer  := 32;
-            C_M00_AXIS_START_COUNT  : integer  := 32
-        );
-        port(
-            la_inp               : in std_logic_vector (la_n_inp-1 downto 0);
-
-            fifo_data_count_i    : in std_logic_vector(31 downto 0);
-            fifo_wr_data_count_i : in std_logic_vector(31 downto 0);
-            fifo_rd_data_count_i : in std_logic_vector(31 downto 0);
-
-            fifo_reset_n         : out std_logic;
-
-            timestamp            : in  std_logic_vector(C_M00_AXIS_TDATA_WIDTH-1 downto 0);
-
-            -- Ports of APB Interface
-            aclk                 : in  std_logic;
-            arstn                : in  std_logic;
-            s_apb_paddr          : in  std_logic_vector(31 downto 0);
-            s_apb_penable        : in  std_logic;
-            s_apb_pprot          : in  std_logic_vector(2 downto 0);
-            s_apb_prdata         : out std_logic_vector(31 downto 0);
-            s_apb_pready         : out std_logic;
-            s_apb_psel           : in  std_logic;
-            s_apb_pslverr        : out std_logic;
-            s_apb_pstrb          : in  std_logic_vector(3 downto 0);
-            s_apb_pwdata         : in  std_logic_vector(31 downto 0);
-            s_apb_pwrite         : in  std_logic;
-
-            -- Ports of Axi Master Bus Interface M00_AXIS
-            m00_axis_aclk        : in std_logic;
-            m00_axis_aresetn     : in std_logic;
-            m00_axis_tvalid      : out std_logic;
-            m00_axis_tdata       : out std_logic_vector(C_M00_AXIS_TDATA_WIDTH-1 downto 0);
-            m00_axis_tstrb       : out std_logic_vector((C_M00_AXIS_TDATA_WIDTH/8)-1 downto 0);
-            m00_axis_tlast       : out std_logic;
-            m00_axis_tready      : in std_logic
-        );
-    end component zlogan_capt_v1_0;
-
-    -- vivado is a bitch and generates a vector of (0 downto 0) instead of plain std_logic
-    type apb_t is record
-        paddr   : std_logic_vector(31 downto 0);   -- in
-        penable : std_logic;                       -- in
-        pprot   : std_logic_vector(2 downto 0);    -- in
-        prdata  : std_logic_vector(31 downto 0);   -- out
-        pready  : std_logic_vector(0 downto 0);    -- out
-        psel    : std_logic_vector(0 downto 0);    -- in
-        pslverr : std_logic_vector(0 downto 0);    -- out
-        pstrb   : std_logic_vector(3 downto 0);    -- in
-        pwdata  : std_logic_vector(31 downto 0);   -- in
-        pwrite  : std_logic;                       -- in
-    end record;
-
     -- this retarded order is kept for backward compatibility with device tree
     type irqs_e is (
         IRQ_SJA1000_0,
         IRQ_CTUCANFD_0,
         IRQ_CTUCANFD_1,
         IRQ_SJA1000_1
-    );
-
-    type apbs_e is (
-        APB_CTUCANFD_0,
-        APB_CTUCANFD_1,
-        APB_SJA1000_0,
-        APB_SJA1000_1,
-        APB_ZLOGAN
     );
 
     type can_e is (
@@ -170,13 +48,12 @@ architecture structure of top_hdl is
         CAN_SJA1000_1
     );
 
-    type apb_arr_t is array(apbs_e) of apb_t;
     type irq_arr_t is array(irqs_e) of std_logic;
     type can_tx_arr_t is array(can_e) of std_logic;
 
     --signal apbs : apb_arr_t;
     signal can_tx : can_tx_arr_t;
-    signal can_rx : std_logic;
+    signal can_rx : can_tx_arr_t;
     signal irqs : irq_arr_t;
     signal aclk : std_logic;
     signal arstn : std_logic;
@@ -184,8 +61,32 @@ architecture structure of top_hdl is
 
     signal la_inp : std_logic_vector(31 downto 0);
     signal irq_f2p : std_logic_vector(3 downto 0);
+
+    signal can_bus_tx              : std_logic_vector(3 downto 0);
+    signal can_bus_rx              : std_logic_vector(3 downto 0);
+    signal can_controller_tx       : std_logic_vector(7 downto 0);
+    signal can_controller_rx       : std_logic_vector(7 downto 0);
 begin
-    can_rx <= and(std_logic_vector(can_tx));
+    CAN1_TXD <= can_bus_tx(0);
+    CAN2_TXD <= can_bus_tx(1);
+
+    can_bus_rx(0) <= CAN1_RXD;
+    can_bus_rx(1) <= CAN2_RXD;
+    can_bus_rx(can_bus_rx'left downto 2) <= (others => '1');
+
+    process(can_tx)
+        variable i : can_e;
+    begin
+        can_controller_tx <= (others => '1');
+        for i in can_e loop
+            can_controller_tx(can_e'pos(i)) <= can_tx(i);
+        end loop;
+    end process;
+
+    g_canrx: for i in can_e generate
+        can_rx(i) <= can_controller_rx(can_e'pos(i));
+    end generate;
+
 
     -- beware of concatenation and to/downto
     irq_f2p(0) <= irqs(IRQ_SJA1000_0);
@@ -216,10 +117,6 @@ begin
         FIXED_IO_ps_clk           => FIXED_IO_ps_clk,
         FIXED_IO_ps_porb          => FIXED_IO_ps_porb,
         FIXED_IO_ps_srstb         => FIXED_IO_ps_srstb,
-        FPGA_IO_A(10 downto 1)    => FPGA_IO_A(10 downto 1),
-        FPGA_IO_B(28 downto 13)   => FPGA_IO_B(28 downto 13),
-        FPGA_IO_C(40 downto 31)   => FPGA_IO_C(40 downto 31),
-        can_rx                    => can_rx,
         sja1000_0_can_tx          => can_tx(CAN_SJA1000_0),
         sja1000_1_can_tx          => can_tx(CAN_SJA1000_1),
         ctu_can_fd_0_can_tx       => can_tx(CAN_CTUCANFD_0),
@@ -232,17 +129,24 @@ begin
         FCLK_RESET0_N_0           => arstn,
         IRQ_F2P                   => irq_f2p,
         LA_INP                    => la_inp,
-        TIMESTAMP                 => timestamp
+        TIMESTAMP                 => timestamp,
+        can_bus_tx                => can_bus_tx,
+        can_bus_rx                => can_bus_rx,
+        can_controller_tx         => can_controller_tx,
+        can_controller_rx         => can_controller_rx
     );
 
-    la_inp(0) <= can_rx;
-    la_inp(1) <= can_tx(CAN_SJA1000_0);
-    la_inp(2) <= can_tx(CAN_SJA1000_1);
-    la_inp(3) <= can_tx(CAN_CTUCANFD_0);
-    la_inp(4) <= can_tx(CAN_CTUCANFD_1);
-    la_inp(5) <= irqs(IRQ_CTUCANFD_0);
-    la_inp(6) <= irqs(IRQ_CTUCANFD_1);
-    la_inp(7) <= irqs(IRQ_SJA1000_0);
-    la_inp(8) <= irqs(IRQ_SJA1000_1);
-    la_inp(la_inp'left downto 9) <= (others => '0');
+    la_inp( 0) <= can_rx(CAN_SJA1000_0);
+    la_inp( 1) <= can_rx(CAN_SJA1000_1);
+    la_inp( 2) <= can_rx(CAN_CTUCANFD_0);
+    la_inp( 3) <= can_rx(CAN_CTUCANFD_1);
+    la_inp( 4) <= can_tx(CAN_SJA1000_0);
+    la_inp( 5) <= can_tx(CAN_SJA1000_1);
+    la_inp( 6) <= can_tx(CAN_CTUCANFD_0);
+    la_inp( 7) <= can_tx(CAN_CTUCANFD_1);
+    la_inp( 8) <= irqs(IRQ_CTUCANFD_0);
+    la_inp( 9) <= irqs(IRQ_CTUCANFD_1);
+    la_inp(10) <= irqs(IRQ_SJA1000_0);
+    la_inp(11) <= irqs(IRQ_SJA1000_1);
+    la_inp(la_inp'left downto 12) <= (others => '0');
 end architecture;

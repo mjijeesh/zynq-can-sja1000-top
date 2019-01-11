@@ -20,7 +20,7 @@ set script_folder [_tcl::get_script_folder]
 ################################################################
 # Check if script is running in correct Vivado version.
 ################################################################
-set scripts_vivado_version 2017.4
+set scripts_vivado_version 2018.2
 set current_vivado_version [version -short]
 
 if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
@@ -128,7 +128,7 @@ xilinx.com:ip:axi_dma:7.1\
 xilinx.com:ip:smartconnect:1.0\
 xilinx.com:ip:axis_data_fifo:1.1\
 xilinx.com:ip:c_counter_binary:12.0\
-pikron.com:user:can4x_to_pmod12_pins:1.0\
+mjerabek:user:can_crossbar:2.0\
 user.org:user:canbench_cc_gpio:1.0\
 xilinx.com:ip:processing_system7:5.5\
 xilinx.com:ip:proc_sys_reset:5.0\
@@ -203,9 +203,6 @@ proc create_root_design { parentCell } {
   # Create ports
   set FCLK_CLK0_0 [ create_bd_port -dir O -type clk FCLK_CLK0_0 ]
   set FCLK_RESET0_N_0 [ create_bd_port -dir O -type rst FCLK_RESET0_N_0 ]
-  set FPGA_IO_A [ create_bd_port -dir IO -from 10 -to 1 FPGA_IO_A ]
-  set FPGA_IO_B [ create_bd_port -dir IO -from 28 -to 13 FPGA_IO_B ]
-  set FPGA_IO_C [ create_bd_port -dir IO -from 40 -to 31 FPGA_IO_C ]
   set IRQ_F2P [ create_bd_port -dir I -from 3 -to 0 -type intr IRQ_F2P ]
   set_property -dict [ list \
    CONFIG.PortWidth {4} \
@@ -213,15 +210,22 @@ proc create_root_design { parentCell } {
  ] $IRQ_F2P
   set LA_INP [ create_bd_port -dir I -from 31 -to 0 -type data LA_INP ]
   set TIMESTAMP [ create_bd_port -dir O -from 63 -to 0 -type data TIMESTAMP ]
-  set can_rx [ create_bd_port -dir I can_rx ]
+  set can_bus_rx [ create_bd_port -dir I -from 3 -to 0 can_bus_rx ]
+  set can_bus_tx [ create_bd_port -dir O -from 3 -to 0 can_bus_tx ]
+  set can_controller_rx [ create_bd_port -dir O -from 7 -to 0 can_controller_rx ]
+  set can_controller_tx [ create_bd_port -dir I -from 7 -to 0 can_controller_tx ]
   set ctu_can_fd_0_can_tx [ create_bd_port -dir O ctu_can_fd_0_can_tx ]
   set ctu_can_fd_0_irq [ create_bd_port -dir O -type intr ctu_can_fd_0_irq ]
+  set ctu_can_fd_0_rx [ create_bd_port -dir I ctu_can_fd_0_rx ]
   set ctu_can_fd_1_can_tx [ create_bd_port -dir O ctu_can_fd_1_can_tx ]
   set ctu_can_fd_1_irq [ create_bd_port -dir O -type intr ctu_can_fd_1_irq ]
+  set ctu_can_fd_1_rx [ create_bd_port -dir I ctu_can_fd_1_rx ]
   set sja1000_0_can_tx [ create_bd_port -dir O sja1000_0_can_tx ]
   set sja1000_0_irq [ create_bd_port -dir O -type intr sja1000_0_irq ]
+  set sja1000_0_rx [ create_bd_port -dir I sja1000_0_rx ]
   set sja1000_1_can_tx [ create_bd_port -dir O sja1000_1_can_tx ]
   set sja1000_1_irq [ create_bd_port -dir O -type intr sja1000_1_irq ]
+  set sja1000_1_rx [ create_bd_port -dir I sja1000_1_rx ]
 
   # Create instance: CTU_CAN_FD_0, and set properties
   set CTU_CAN_FD_0 [ create_bd_cell -type ip -vlnv user.org:user:CTU_CAN_FD:1.0 CTU_CAN_FD_0 ]
@@ -232,7 +236,7 @@ proc create_root_design { parentCell } {
   # Create instance: axi_apb_bridge_0, and set properties
   set axi_apb_bridge_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_apb_bridge:3.0 axi_apb_bridge_0 ]
   set_property -dict [ list \
-   CONFIG.C_APB_NUM_SLAVES {5} \
+   CONFIG.C_APB_NUM_SLAVES {6} \
    CONFIG.C_M_APB_PROTOCOL {apb4} \
  ] $axi_apb_bridge_0
 
@@ -243,6 +247,7 @@ proc create_root_design { parentCell } {
    CONFIG.c_include_s2mm {1} \
    CONFIG.c_include_sg {0} \
    CONFIG.c_sg_include_stscntrl_strm {0} \
+   CONFIG.c_sg_length_width {23} \
  ] $axi_dma_0
 
   # Create instance: axi_smc, and set properties
@@ -265,8 +270,8 @@ proc create_root_design { parentCell } {
    CONFIG.Sync_Threshold_Output {false} \
  ] $c_counter_binary_0
 
-  # Create instance: can4x_to_pmod12_pins_0, and set properties
-  set can4x_to_pmod12_pins_0 [ create_bd_cell -type ip -vlnv pikron.com:user:can4x_to_pmod12_pins:1.0 can4x_to_pmod12_pins_0 ]
+  # Create instance: can_crossbar_0, and set properties
+  set can_crossbar_0 [ create_bd_cell -type ip -vlnv mjerabek:user:can_crossbar:2.0 can_crossbar_0 ]
 
   # Create instance: canbench_cc_gpio_0, and set properties
   set canbench_cc_gpio_0 [ create_bd_cell -type ip -vlnv user.org:user:canbench_cc_gpio:1.0 canbench_cc_gpio_0 ]
@@ -1105,17 +1110,13 @@ proc create_root_design { parentCell } {
    CONFIG.la_n_inp {32} \
  ] $zlogan_capt_0
 
-  set_property -dict [ list \
-   CONFIG.TDATA_NUM_BYTES {8} \
-   CONFIG.HAS_TSTRB {1} \
- ] [get_bd_intf_pins /zlogan_capt_0/M00_AXIS]
-
   # Create interface connections
   connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M [get_bd_intf_pins CTU_CAN_FD_0/s_apb] [get_bd_intf_pins axi_apb_bridge_0/APB_M]
   connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M2 [get_bd_intf_pins CTU_CAN_FD_1/s_apb] [get_bd_intf_pins axi_apb_bridge_0/APB_M2]
   connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M3 [get_bd_intf_pins axi_apb_bridge_0/APB_M3] [get_bd_intf_pins sja1000_0/s_apb]
   connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M4 [get_bd_intf_pins axi_apb_bridge_0/APB_M4] [get_bd_intf_pins sja1000_1/s_apb]
   connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M5 [get_bd_intf_pins axi_apb_bridge_0/APB_M5] [get_bd_intf_pins zlogan_capt_0/s_apb]
+  connect_bd_intf_net -intf_net axi_apb_bridge_0_APB_M6 [get_bd_intf_pins axi_apb_bridge_0/APB_M6] [get_bd_intf_pins can_crossbar_0/s_apb]
   connect_bd_intf_net -intf_net axi_dma_0_M_AXI_S2MM [get_bd_intf_pins axi_dma_0/M_AXI_S2MM] [get_bd_intf_pins axi_smc/S00_AXI]
   connect_bd_intf_net -intf_net axi_smc_M00_AXI [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP0]
   connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_pins axi_dma_0/S_AXIS_S2MM] [get_bd_intf_pins axis_data_fifo_0/M_AXIS]
@@ -1127,26 +1128,30 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net zlogan_capt_0_M00_AXIS [get_bd_intf_pins axis_data_fifo_0/S_AXIS] [get_bd_intf_pins zlogan_capt_0/M00_AXIS]
 
   # Create port connections
+  connect_bd_net -net CAN_rx_1_1 [get_bd_ports ctu_can_fd_1_rx] [get_bd_pins CTU_CAN_FD_1/CAN_rx]
+  connect_bd_net -net CAN_rx_3_1 [get_bd_ports ctu_can_fd_0_rx] [get_bd_pins CTU_CAN_FD_0/CAN_rx]
   connect_bd_net -net CTU_CAN_FD_0_CAN_tx [get_bd_ports ctu_can_fd_0_can_tx] [get_bd_pins CTU_CAN_FD_0/CAN_tx]
   connect_bd_net -net CTU_CAN_FD_0_irq [get_bd_ports ctu_can_fd_0_irq] [get_bd_pins CTU_CAN_FD_0/irq]
   connect_bd_net -net CTU_CAN_FD_1_CAN_tx [get_bd_ports ctu_can_fd_1_can_tx] [get_bd_pins CTU_CAN_FD_1/CAN_tx]
   connect_bd_net -net CTU_CAN_FD_1_irq [get_bd_ports ctu_can_fd_1_irq] [get_bd_pins CTU_CAN_FD_1/irq]
   connect_bd_net -net IRQ_F2P_0_1 [get_bd_ports IRQ_F2P] [get_bd_pins processing_system7_0/IRQ_F2P]
-  connect_bd_net -net Net2 [get_bd_ports FPGA_IO_A] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_A]
-  connect_bd_net -net Net3 [get_bd_ports FPGA_IO_B] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_B]
-  connect_bd_net -net Net4 [get_bd_ports FPGA_IO_C] [get_bd_pins can4x_to_pmod12_pins_0/FPGA_IO_C]
   connect_bd_net -net axis_data_fifo_0_axis_data_count [get_bd_pins axis_data_fifo_0/axis_data_count] [get_bd_pins zlogan_capt_0/fifo_data_count_i]
   connect_bd_net -net axis_data_fifo_0_axis_rd_data_count [get_bd_pins axis_data_fifo_0/axis_rd_data_count] [get_bd_pins zlogan_capt_0/fifo_rd_data_count_i]
   connect_bd_net -net axis_data_fifo_0_axis_wr_data_count [get_bd_pins axis_data_fifo_0/axis_wr_data_count] [get_bd_pins zlogan_capt_0/fifo_wr_data_count_i]
+  connect_bd_net -net bus_rx_0_1 [get_bd_ports can_bus_rx] [get_bd_pins can_crossbar_0/bus_rx]
   connect_bd_net -net c_counter_binary_0_Q [get_bd_ports TIMESTAMP] [get_bd_pins CTU_CAN_FD_0/timestamp] [get_bd_pins CTU_CAN_FD_1/timestamp] [get_bd_pins c_counter_binary_0/Q] [get_bd_pins zlogan_capt_0/timestamp]
-  connect_bd_net -net can_rx_0_1 [get_bd_ports can_rx] [get_bd_pins CTU_CAN_FD_0/CAN_rx] [get_bd_pins CTU_CAN_FD_1/CAN_rx] [get_bd_pins sja1000_0/can_rx] [get_bd_pins sja1000_1/can_rx]
+  connect_bd_net -net can_crossbar_0_bus_tx [get_bd_ports can_bus_tx] [get_bd_pins can_crossbar_0/bus_tx]
+  connect_bd_net -net can_crossbar_0_controller_rx [get_bd_ports can_controller_rx] [get_bd_pins can_crossbar_0/controller_rx]
+  connect_bd_net -net can_rx_0_1 [get_bd_ports sja1000_0_rx] [get_bd_pins sja1000_0/can_rx]
+  connect_bd_net -net can_rx_2_1 [get_bd_ports sja1000_1_rx] [get_bd_pins sja1000_1/can_rx]
   connect_bd_net -net canbench_cc_gpio_0_GPIO_I [get_bd_pins canbench_cc_gpio_0/GPIO_I] [get_bd_pins processing_system7_0/GPIO_I]
+  connect_bd_net -net controller_tx_0_1 [get_bd_ports can_controller_tx] [get_bd_pins can_crossbar_0/controller_tx]
   connect_bd_net -net la_inp_0_1 [get_bd_ports LA_INP] [get_bd_pins zlogan_capt_0/la_inp]
-  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_ports FCLK_CLK0_0] [get_bd_pins CTU_CAN_FD_0/aclk] [get_bd_pins CTU_CAN_FD_1/aclk] [get_bd_pins axi_apb_bridge_0/s_axi_aclk] [get_bd_pins axi_dma_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_0/s_axi_lite_aclk] [get_bd_pins axi_smc/aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/aclk] [get_bd_pins sja1000_1/aclk] [get_bd_pins zlogan_capt_0/aclk] [get_bd_pins zlogan_capt_0/m00_axis_aclk]
+  connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_ports FCLK_CLK0_0] [get_bd_pins CTU_CAN_FD_0/aclk] [get_bd_pins CTU_CAN_FD_1/aclk] [get_bd_pins axi_apb_bridge_0/s_axi_aclk] [get_bd_pins axi_dma_0/m_axi_s2mm_aclk] [get_bd_pins axi_dma_0/s_axi_lite_aclk] [get_bd_pins axi_smc/aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins c_counter_binary_0/CLK] [get_bd_pins can_crossbar_0/aclk] [get_bd_pins processing_system7_0/FCLK_CLK0] [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_processing_system7_0_100M/slowest_sync_clk] [get_bd_pins sja1000_0/aclk] [get_bd_pins sja1000_1/aclk] [get_bd_pins zlogan_capt_0/aclk] [get_bd_pins zlogan_capt_0/m00_axis_aclk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N [get_bd_ports FCLK_RESET0_N_0] [get_bd_pins processing_system7_0/FCLK_RESET0_N] [get_bd_pins rst_processing_system7_0_100M/ext_reset_in]
   connect_bd_net -net processing_system7_0_GPIO_O [get_bd_pins canbench_cc_gpio_0/GPIO_O] [get_bd_pins processing_system7_0/GPIO_O]
   connect_bd_net -net rst_processing_system7_0_100M_interconnect_aresetn [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins rst_processing_system7_0_100M/interconnect_aresetn]
-  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/arstn] [get_bd_pins CTU_CAN_FD_1/arstn] [get_bd_pins axi_apb_bridge_0/s_axi_aresetn] [get_bd_pins axi_dma_0/axi_resetn] [get_bd_pins axi_smc/aresetn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/arstn] [get_bd_pins sja1000_1/arstn] [get_bd_pins zlogan_capt_0/arstn] [get_bd_pins zlogan_capt_0/m00_axis_aresetn]
+  connect_bd_net -net rst_processing_system7_0_100M_peripheral_aresetn [get_bd_pins CTU_CAN_FD_0/arstn] [get_bd_pins CTU_CAN_FD_1/arstn] [get_bd_pins axi_apb_bridge_0/s_axi_aresetn] [get_bd_pins axi_dma_0/axi_resetn] [get_bd_pins axi_smc/aresetn] [get_bd_pins can_crossbar_0/arstn] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_processing_system7_0_100M/peripheral_aresetn] [get_bd_pins sja1000_0/arstn] [get_bd_pins sja1000_1/arstn] [get_bd_pins zlogan_capt_0/arstn] [get_bd_pins zlogan_capt_0/m00_axis_aresetn]
   connect_bd_net -net sja1000_0_can_tx [get_bd_ports sja1000_0_can_tx] [get_bd_pins sja1000_0/can_tx]
   connect_bd_net -net sja1000_0_irq [get_bd_ports sja1000_0_irq] [get_bd_pins sja1000_0/irq]
   connect_bd_net -net sja1000_1_can_tx [get_bd_ports sja1000_1_can_tx] [get_bd_pins sja1000_1/can_tx]
@@ -1158,6 +1163,7 @@ proc create_root_design { parentCell } {
   create_bd_addr_seg -range 0x00010000 -offset 0x43C30000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_0/s_apb/Reg] SEG_CTU_CAN_FD_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C70000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs CTU_CAN_FD_1/s_apb/Reg] SEG_CTU_CAN_FD_1_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x40400000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_0/S_AXI_LITE/Reg] SEG_axi_dma_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x43C10000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs can_crossbar_0/s_apb/Reg] SEG_can_crossbar_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C80000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_0/s_apb/Reg] SEG_sja1000_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C90000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs sja1000_1/s_apb/Reg] SEG_sja1000_1_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x43C00000 [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs zlogan_capt_0/s_apb/Reg] SEG_zlogan_capt_0_Reg
