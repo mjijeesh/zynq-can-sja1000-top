@@ -43,6 +43,9 @@ build_ctucanfd_driver:
     except:
         - web
         - schedules
+    before_script:
+        # Do not run the global before_script here
+        - :
     script:
         #- python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
         - make -C modules/CTU_CAN_FD/driver -j$(nproc)
