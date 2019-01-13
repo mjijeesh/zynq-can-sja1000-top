@@ -5,11 +5,6 @@ before_script:
     # Add the private key to this user
     - eval $(ssh-agent -s) && ssh-add /depkey/id_rsa
     - mkdir ~/.ssh && cp /depkey/config ~/.ssh/config
-    # Docker specific settings
-    - git config --global user.name "Gitlab CI"
-    - git config --global user.email "bot@gitlabci"
-    # Warning: specifying before_script in job description will override
-    #          this one, not append to it!
 
 build:
     image: mjerabek/vivado
@@ -47,7 +42,6 @@ build_ctucanfd_driver:
         # Do not run the global before_script here
         - ":"
     script:
-        #- python3 ci/fetch_ctucanfd_driver.ko $(git rev-parse @:modules/CTU_CAN_FD) ${CI_JOB_TOKEN}
         - make -C modules/CTU_CAN_FD/driver -j$(nproc)
         - make -C modules/CTU_CAN_FD/driver/linux KDIR=/linux/build -j$(nproc)
         - cp modules/CTU_CAN_FD/driver/linux/ctucanfd.ko ctucanfd.ko
@@ -76,34 +70,9 @@ test:
         reports:
             junit: [test_hw.xml]
 
-pull-submodules:
-    tags: [vivado]
-    stage: build
-    only:
-        - schedules # on ${MASTER_BRANCH}
-        - web
-    script:
-        - git checkout ${AUTO_BRANCH} && git merge origin/${AUTO_BRANCH} --ff-only
-        - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
-        - git merge origin/${MASTER_BRANCH}
-        - git submodule update --remote --merge modules/CTU_CAN_FD modules/sja1000
-        # - (cd modules/zlogan && git pull origin zlogan-component)
-        - "git commit -q -m 'auto: modules update' -a || true"
-        - git push || true
-
-push-autobuild-stable:
-    tags: [vivado]
-    stage: build
-    only:
-        - schedules # on ${MASTER_BRANCH}
-        - web
-    script:
-        - git checkout ${AUTO_BRANCH}_stable && git merge origin/${AUTO_BRANCH}_stable --ff-only
-        - "git remote set-url --push origin $(echo ${CI_REPOSITORY_URL} | sed -re 's~^[^@]+@([^/]+)~git@\\1:~')"
-        - git merge origin/${MASTER_BRANCH}
-        - git push || true
-
 variables:
+    GIT_STRATEGY: clone
+    GIT_CHECKOUT: "true"
     GIT_SUBMODULE_STRATEGY: recursive
-    MASTER_BRANCH: microzed_apo_canfd_test
-    AUTO_BRANCH: autobuild_microzed_apo_canfd_test
+    MASTER_BRANCH: autobuild_test_updated_driver
+    AUTO_BRANCH: autobuild_test_updated_driver
