@@ -37,7 +37,7 @@ build:
 
 build_ctucanfd_driver:
     stage: build
-    image: hathi.duckdns.org/user/ctucanfd_drvtest
+    image: registry.gitlab.com/canfd/server-tools/ctucanfd_drvtest
     only:
         - /^autobuild_.*/
     except:
@@ -59,7 +59,7 @@ build_ctucanfd_driver:
 
 test:
     stage: test
-    image: hathi.duckdns.org/user/ctucanfd_drvtest
+    image: registry.gitlab.com/canfd/server-tools/ctucanfd_drvtest
     dependencies: [build_ctucanfd_driver, build]
     tags: [hathi]
     only:
