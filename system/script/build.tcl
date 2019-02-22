@@ -1,4 +1,5 @@
 set jobs [exec "nproc"]
+catch {set jobs $::env(VIVADO_NJOBS)} err
 puts "Using $jobs jobs."
 
 open_project ../project/zynq-can-top.xpr
