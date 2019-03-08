@@ -90,7 +90,7 @@ if not cafd and not sja:
     (cafd[0], [cafd[1], sja[0]], False),
     (cafd[0], [cafd[1], sja[0]], True),
     (cafd[0], [cafd[1], sja[0]], "non-iso")], ids=mkid)
-@pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5)])
+@pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5, nid_bits=0)])
 @pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
 @pytest.mark.parametrize('NMSGS', [(10)])
 @run_setup_teardown
@@ -114,7 +114,7 @@ def test_can_random(expect, fkmsg,  # fixtures
     all_ifcs = [txi] + rxis
 
     with _cm_setup_and_check_stats_and_kmsg(**locals()):
-        sent_msgs = [rand_can_frame(fgpar) for _ in range(NMSGS)]
+        sent_msgs = [rand_can_frame(fgpar, ifc_id=0) for _ in range(NMSGS)]
         nonfd_msgs = [msg for msg in sent_msgs if not msg.is_fd]
 
         len_fd, len_nonfd = len(sent_msgs), len(nonfd_msgs)
@@ -276,7 +276,7 @@ def _cm_setup_and_check_stats_and_kmsg(*, expect, fkmsg, fd, bitrate, dbitrate,
         _check_kmsg(expect=expect, fkmsg=fkmsg)
 
 
-@pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5)])
+@pytest.mark.parametrize('fgpar', [FrameGenParams(pext=0.5, pfd=0.5, pbrs=0.5, nid_bits=2)])
 @pytest.mark.parametrize('bitrate,dbitrate', [(500000, 4000000)])
 @pytest.mark.parametrize('NMSGS', [(1000)])
 @pytest.mark.parametrize('fd', [(True)])
@@ -294,14 +294,15 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
     """
 
     def genmsgs(id, fd):
-        # fgp = fgpar.mask_fd(fd)
-        # return [rand_can_frame(fgp) for _ in range(NMSGS)]
-        return deterministic_frame_sequence(NMSGS, id=id, fd=fd)
+        fgp = fgpar.mask_fd(fd)
+        return [rand_can_frame(fgp, ifc_id=id) for _ in range(NMSGS)]
+        # return deterministic_frame_sequence(NMSGS, id=id, fd=fd)
 
     def check_messages_match(rec, sent, rxi):
         _check_messages_match([rec], sent, sent, [rxi], expect=expect)
 
     all_ifcs = [cafd[0], cafd[1]]
+    assert len(all_ifcs) <= (1 << fgpar.nid_bits)
     with _cm_setup_and_check_stats_and_kmsg(**locals()):
         buses = [ifc.open(fd=fd and ifc.fd_capable) for ifc in all_ifcs]
         rxis_bus_n = [(ifc, bus, NMSGS) for ifc, bus in zip(all_ifcs, buses)]

@@ -106,6 +106,9 @@ class FrameGenParams:
     pbrs = attr.ib()
     "probability of a CAN FD frame having the Bit Rate Shift bit set"
 
+    nid_bits = attr.ib()  # type: int
+    "number of lower cam_id bits reserved for controller id"
+
     def mask_fd_inplace(self, fd):
         if not fd:
             self.pfd = 0
@@ -166,7 +169,7 @@ def get_can_interfaces():
     return ifcs
 
 
-def rand_can_frame(fgpar: FrameGenParams) -> can.Message:
+def rand_can_frame(fgpar: FrameGenParams, ifc_id: int) -> can.Message:
     """Generate a random CAN frame.
 
     Probability of zero means strictly disabled.
@@ -174,6 +177,8 @@ def rand_can_frame(fgpar: FrameGenParams) -> can.Message:
     def p(p): return False if p == 0 else p < random.random()
     ext_id = p(fgpar.pext)
     id = random.randint(0, 0x1fffffff if ext_id else 0x7FF)
+    ifcid_mask = (1 << fgpar.nid_bits) - 1
+    id = (id & ~ifcid_mask) | (ifc_id & ifcid_mask)
     fd = p(fgpar.pfd)
     # BRS only in CAN FD frames, indicated by EDL bit
     brs = p(fgpar.pbrs) if fd else False
@@ -194,7 +199,7 @@ def deterministic_frame_sequence(nmsgs: int, id: int, fd: bool) -> List[can.Mess
         brs = xfd and (i % 4) == 3
         xlen = (i * 2) % 9
         data = (i & ((1 << xlen) - 1)).to_bytes(xlen, byteorder='little')
-        canid = ((id&3) << 8) | (i & 0xFF)
+        canid = (i & ~0x3) | id
         msg = can.Message(arbitration_id=canid, data=data, dlc=xlen,
                           extended_id=ext, is_fd=xfd, bitrate_switch=brs)
         msgs.append(msg)
