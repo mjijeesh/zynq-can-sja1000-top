@@ -121,7 +121,7 @@ class FrameGenParams:
 
 def compat2type(compatible):
     compats = {
-        'sja1000':'sja1000',
+        'sja1000': 'sja1000',
         'ctucanfd': 'ctucanfd',
         'xlnx,': 'xilinx_can'
     }
@@ -161,7 +161,7 @@ def get_can_interfaces():
 
         # discover if the interface is FD capable
         ifc.set_down()
-        cmd = ['ip', 'link', 'set', ifc.ifc, 'type', 'can', 'fd', 'off']
+        cmd = [IP_BIN, 'link', 'set', ifc.ifc, 'type', 'can', 'fd', 'off']
         res = sp.run(cmd, check=False, stdout=sp.DEVNULL, stderr=sp.STDOUT)
         ifc.fd_capable = res.returncode == 0
 
@@ -302,7 +302,6 @@ class MessageSender:
         except KeyError:
             self.fd = os.dup(self.bus.socket.fileno())
             sel.register(self.fd, selectors.EVENT_WRITE, data=self)
-
 
     def on_event(self):
         try:

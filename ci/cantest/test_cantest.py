@@ -171,7 +171,8 @@ def _check_messages_match(received_msgs: List[List[can.Message]],
     rxi_rms_sms = [(rxi, rms, sent_msgs if rxi.fd_capable else nonfd_msgs)
                    for rxi, rms in zip(rxis, received_msgs)]
     for rxi, rms, sms in rxi_rms_sms:
-        msg = "{}: received frame count not equal to sent frame count".format(rxi.ifc)
+        msg = "{}: received frame count not equal to sent frame count " \
+              "(sent {}, received {})".format(rxi.ifc, len(sms), len(rms))
         expect(len(rms) == len(sms), msg)
         # print('{}: expected'.format(rxi.ifc))
         # for msg in sms:
