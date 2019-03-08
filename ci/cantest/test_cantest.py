@@ -16,6 +16,8 @@ import can
 from can.interfaces.socketcan.constants import * # CAN_RAW, CAN_*_FLAG
 import time
 import errno
+from .can_constants import CAN_ERR
+
 
 @pytest.fixture(scope='module')
 def fkmsg():
@@ -309,7 +311,6 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
         for bus in buses:
             bus.shutdown()
 
-
         check_messages_match(received_msgs[0], txis_bus_msgs[1][2], rxis_bus_n[0][0])
         check_messages_match(received_msgs[1], txis_bus_msgs[0][2], rxis_bus_n[1][0])
 
@@ -319,7 +320,16 @@ def test_can_multitx_2cafd(expect, fkmsg,  # fixtures
 @run_setup_teardown
 def test_cafd_rx_overrun(expect, fkmsg,  # fixtures
                          fd, bitrate, dbitrate):
-    """Generic test method.
+    """Test handling RX FIFO overrun condition.
+
+    Test plan:
+    - ioctl on rxb to disable reception (mask RXBNEI)
+    - send 100 frames on txb
+    - ioctl on rxb to enable reception (unmask RXBNEI)
+    - receive <100 frames on rxb, the last one should be error frame
+    - check that it's overload frame
+    - try to read another frame
+      - there should not be any (testcase: overload is handled only once)
 
     :param fd: whether to enable FD mode and FD messages; True for iso fd,
                "non-iso" for non-iso fd, False to disable.
@@ -333,64 +343,38 @@ def test_cafd_rx_overrun(expect, fkmsg,  # fixtures
     rxi = cafd[1]
     log = logging.getLogger('test.cafd_rx_overrun')
     all_ifcs = [txi, rxi]
-    with _cm_setup_and_check_stats_and_kmsg(**locals()), Transaction() as tx:
+    with _cm_setup_and_check_stats_and_kmsg(**locals(), ck_stats=False), Transaction() as tx:
         buses = [ifc.open(fd=fd and ifc.fd_capable) for ifc in all_ifcs]
         tx.on_cleanup(lambda: [bus.shutdown() for bus in buses])
         txb, rxb = buses
 
         # receive errors on rxi
-        rxb.socket.setsockopt(SOL_CAN_RAW, CAN_RAW_ERR_FILTER, 1)
-        rxi.mask_rx(True)
-        tx.on_cleanup(lambda: rxi.mask_rx(False))
+        rxb.socket.setsockopt(SOL_CAN_RAW, CAN_RAW_ERR_FILTER, CAN_ERR.MASK)
+
+        with Transaction() as tx2:
+            rxi.mask_rx(True)
+            tx2.on_cleanup(lambda: rxi.mask_rx(False))
+            for msg in deterministic_frame_sequence(100, id=0, fd=False):
+                txb.send(msg)
 
         msgs = []
         sel = selectors.SelectSelector()
         sel.register(rxb.socket.fileno(), selectors.EVENT_READ)
         tx.on_cleanup(lambda: sel.unregister(rxb.socket))
 
-        sel2 = selectors.SelectSelector()
-        sel2.register(txb.socket, selectors.EVENT_WRITE)
-        tx.on_cleanup(lambda: sel2.unregister(txb.socket))
-        errmsg = None
-        for msg in deterministic_frame_sequence(50, id=0, fd=False):
-            while True:
-                res = sel2.select(timeout=1.0)
-                if not res:
-                    raise RuntimeError("send timeout")
-                log.info(repr(res))
-                try:
-                    txb.send(msg)
-                except can.CanError as e:
-                    if e.__context__.errno == errno.ENOBUFS:
-                        log.warning('ENOBUFS, but res = {}'.format(res))
-                        time.sleep(0.01)
-                        continue
-                    else:
-                        raise
+        while True:
+            res = sel.select(timeout=0.5)
+            if not res:
                 break
-            res = sel.select(timeout=0)
-            log.info('rx select res = {}'.format(res))
-            if res:
-                errmsg = rxb.recv()
-                log.info(repr(errmsg.__dict__))
-                break
-            msgs.append(msg)
-        print(rxb.recv())
-        assert errmsg is not None
-        log.info('Sent {} messages until overflow was reached'.format(len(msgs)))
+            errmsg = rxb.recv()
+            msgs.append(errmsg)
+            log.info(repr(errmsg.__dict__))
 
-
-        """
-        - ioctl on rxb to disable reception (mask RXBNEI)
-        - do:
-            send frame on txb
-            try receive on rxb
-          until frame received # error frame
-        - check that it's overload frame
-        - try to read another frame
-          - there should not be any (testcase: overload is handled only once)
-        - send another frame
-        - try to read frame
-          - there should be overload frame (testcase: overload is triggered for every frame)
-        - cleanup: ioctl on rxb to enable reception
-        """
+        pprint(msgs)
+        assert msgs
+        expect(msgs[-1].is_error_frame)
+        expect(msgs[-1].arbitration_id == CAN_ERR.CRTL and
+               msgs[-1].data[1] == CAN_ERR.CRTL_RX_OVERFLOW,
+               "Error frame should be RX overflow.")
+        expect(all(not m.is_error_frame for m in msgs[:-1]))
+        log.info('Sent {} messages until overflow was reached'.format(len(msgs)-1))
