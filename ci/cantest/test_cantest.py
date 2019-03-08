@@ -140,6 +140,7 @@ def _send_msgs_sync(rxis_bus_n: List[Tuple[CANInterface, Any, int]],
     :param txis_msgs: [(txi, iterable(CAMFrame))]
     :param rxis: [(rxi, n_expected_messages)]
     """
+    log = logging.getLogger('send')
     sel = selectors.DefaultSelector()
     recs = []
     for rxi, bus, nmsgs in rxis_bus_n:
@@ -157,6 +158,10 @@ def _send_msgs_sync(rxis_bus_n: List[Tuple[CANInterface, Any, int]],
             raise
         for key, events in es:
             key.data.on_event()
+        if not es:
+            log.warning("Timeout, but some handlers are still registered ...")
+            print(dict(sel.get_map()))
+            break
 
     received_msgs = [rec.messages for rec in recs]
     return received_msgs
