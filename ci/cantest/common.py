@@ -271,14 +271,10 @@ def send_messages(ifc, bus, msgs):
 
     i = 0
     while i < len(msgs):
-        try:
-            log.debug('sending msg')
-            bus.send(msgs[i])
-            i += 1
-            yield
-        except can.CanError as e:
-            if e.__context__.errno != errno.ENOBUFS:
-                raise
+        log.debug('sending msg')
+        bus.send(msgs[i])
+        i += 1
+        yield
     log.info('done')
 
 
