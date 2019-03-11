@@ -51,7 +51,7 @@ static inline int sock_get_if_index(int s, const char *if_name)
 
 received_frame receive(int s)
 {
-    char ctrlmsg[CMSG_SPACE(sizeof(struct timeval)) + CMSG_SPACE(sizeof(uint32_t))];
+    char ctrlmsg[CMSG_SPACE(sizeof(struct timespec)) + CMSG_SPACE(sizeof(struct scm_timestamping))];
     struct iovec iov;
     struct msghdr msg;
     struct cmsghdr *cmsg;
@@ -126,22 +126,8 @@ int can_open(const char *ifc)
 
     //uint32_t so_timestamping_flags = SOF_TIMESTAMPING_RX_HARDWARE;
     uint32_t so_timestamping_flags = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE | SOF_TIMESTAMPING_SOFTWARE;
+
     SET_SOCKOPT(s, SOL_SOCKET, SO_TIMESTAMPNS, 1);
-
-    struct ifreq hwtstamp;
-	struct hwtstamp_config hwconfig;
-
-    memset(&hwtstamp, 0, sizeof(hwtstamp));
-    strncpy(hwtstamp.ifr_name, ifc, sizeof(hwtstamp.ifr_name));
-    hwtstamp.ifr_data = (char*) &hwconfig;
-    memset(&hwconfig, 0, sizeof(hwconfig));
-    hwconfig.tx_type = (so_timestamping_flags & SOF_TIMESTAMPING_TX_HARDWARE) ?
-                        HWTSTAMP_TX_ON : HWTSTAMP_TX_OFF;
-    hwconfig.rx_filter = (so_timestamping_flags & SOF_TIMESTAMPING_RX_HARDWARE) ?
-                        HWTSTAMP_FILTER_PTP_V1_L4_SYNC : HWTSTAMP_FILTER_NONE;
-    if (ioctl(s, SIOCSHWTSTAMP, &hwtstamp) < 0)
-        LOG_F(ERROR, "SIOCSHWTSTAMP: %s", strerror(errno));
-
     SET_SOCKOPT(s, SOL_SOCKET, SO_TIMESTAMPING, so_timestamping_flags);
 
     /*
@@ -251,6 +237,13 @@ void test_recv(int sock)
             printf("ts = %llu\n", *fr.ts_kern);
         else
             printf("ts missing");
+        printf(" data*: %x#: (%d) ", fr.frame.can_id, fr.frame.len);
+        for (int i=0; i<fr.frame.len; ++i)
+            printf(" %02x", fr.frame.data[i]);
+        printf("\n");
+        unsigned long long ts;
+        memcpy(&ts, fr.frame.data, sizeof(ts));
+        printf(" from data: %llu\n", ts);
     }
 }
 

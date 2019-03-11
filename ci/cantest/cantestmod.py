@@ -45,7 +45,9 @@ def process_anc(anc):
             if cmsg_type == SO_TIMESTAMPNS:
                 res['timestampns'] = timespec2double(cmsg_data)
             elif cmsg_type == SO_TIMESTAMPING:
-                res['timestamping'] = timespec2double(cmsg_data)
+                data = struct.unpack('@llllll', cmsg_data)
+                data = zip(data[::2], data[1::2])
+                res['timestamping'] = tuple(sec + nsec*1e-9 for sec, nsec in data)
             elif cmsg_type == SO_RXQ_OVFL:
                 res['dropped'] = struct.unpack('I', cmsg_data)[0]
     print(res)
@@ -63,7 +65,7 @@ def read_msg(sock):
     """
     # Fetching the Arb ID, DLC and Data
     try:
-        cf, anc, _, addr = sock.recvmsg(CANFD_MTU, socket.CMSG_SPACE(2*8+4))
+        cf, anc, _, addr = sock.recvmsg(CANFD_MTU, 128)  # 2*3*8 + 8 + 4
         channel = addr[0] if isinstance(addr, tuple) else addr
     except socket.error as exc:
         raise can.CanError("Error receiving: %s" % exc)
@@ -228,10 +230,13 @@ def sock_send_multi(self, msgs, timeout=None):
 
 def sock_init(self, *args, **kwds):
     _base_init(self, *args, **kwds)
-    so_timestamping_flags = SOF_TIMESTAMPING_RX_HARDWARE
+    so_timestamping_flags = SOF_TIMESTAMPING_RAW_HARDWARE \
+                          | SOF_TIMESTAMPING_SOFTWARE \
+                          | SOF_TIMESTAMPING_RX_HARDWARE \
+                          | SOF_TIMESTAMPING_RX_SOFTWARE
     self.socket.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPING,
                            so_timestamping_flags)
-    self.socket.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPNS, 1)
+    # self.socket.setsockopt(socket.SOL_SOCKET, SO_TIMESTAMPNS, 1)
 
 
 _base_init = socketcan.SocketcanBus.__init__
